@@ -1,0 +1,79 @@
+# --- Secrets and environment -------------------------------------------------
+# Real settings never enter Git. Only *.example files are committed.
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.env
+!*.env.example
+/secrets/*
+!/secrets/README.md
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+*.jks
+id_rsa*
+id_ed25519*
+*.kdbx
+*.age
+restic-password*
+
+# --- Data that may contain client information --------------------------------
+*.sql
+*.sql.gz
+*.dump
+*.backup
+*.bak
+*.tar
+*.tar.gz
+*.zip
+# Reviewed Prisma migrations are source code and must be committed.
+!**/prisma/migrations/**/*.sql
+# Runtime data folders, anchored to the repository root so that source
+# folders with the same name (for example src/modules/storage) stay tracked.
+/backups/
+/storage/
+/uploads/
+/quarantine/
+/pgdata/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Dependencies and build output -------------------------------------------
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+.turbo/
+
+# --- Test artefacts ----------------------------------------------------------
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+*.har
+
+# --- Logs --------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+
+# --- Editors and operating systems -------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Private assistant notes (also listed in .git/info/exclude) --------------
+CLAUDE.md
+CLAUDE.local.md
