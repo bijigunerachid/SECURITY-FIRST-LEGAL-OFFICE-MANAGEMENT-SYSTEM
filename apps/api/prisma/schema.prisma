@@ -1,0 +1,18 @@
+// Lexora database schema.
+//
+// Connection URLs are not set here. Migrations run as the schema owner
+// (MIGRATION_DATABASE_URL, see prisma.config.ts); the running API connects as
+// the least-privilege application role (DATABASE_URL, see src/lib/database.ts).
+//
+// Business models arrive with the phases that need them (see docs/roadmap.md).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

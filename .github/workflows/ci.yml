@@ -1,0 +1,110 @@
+# Continuous integration: every push and pull request must pass all checks.
+#
+# Supply-chain rules for this file:
+# - Actions are pinned to full commit SHAs (tags can be moved); the version is
+#   noted beside each SHA.
+# - Scanners run from official images pinned by digest, not third-party actions.
+# - The workflow token is read-only.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # v8.30.1
+  TRIVY_IMAGE: aquasec/trivy@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa # 0.75.0
+
+jobs:
+  quality:
+    name: Lint, types, unit tests, build, audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies (install scripts disabled by .npmrc)
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run generate
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - run: npm run build
+      - name: Dependency audit
+        run: npm run audit:deps
+
+  integration-e2e:
+    name: Integration and end-to-end tests (real PostgreSQL)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - name: Create throwaway CI secrets and settings
+        run: npm run setup:dev
+      - name: Start PostgreSQL
+        run: npm run db:up
+      - name: Integration tests (applies migrations to the test database first)
+        run: npm run test:integration
+      - run: npm run build
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run test:e2e
+        env:
+          CI: "true"
+      - name: Upload Playwright report and screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 14
+      - name: Database logs on failure
+        if: ${{ failure() }}
+        run: docker compose -f compose.dev.yaml logs db
+
+  security-scans:
+    name: Secret and vulnerability scans
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history, so secrets in old commits are found too
+      - name: Secret scan of the whole Git history (gitleaks)
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo:ro" "$GITLEAKS_IMAGE"
+          git /repo --config /repo/.gitleaks.toml --redact --no-banner
+      - name: Vulnerability, secret and misconfiguration scan (Trivy)
+        run: >
+          docker run --rm -v "$PWD:/scan:ro" "$TRIVY_IMAGE"
+          fs --scanners vuln,secret,misconfig --include-dev-deps
+          --exit-code 1 --no-progress --skip-version-check /scan

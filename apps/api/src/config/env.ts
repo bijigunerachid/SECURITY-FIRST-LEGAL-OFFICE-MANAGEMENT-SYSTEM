@@ -1,0 +1,174 @@
+import { readFileSync } from "node:fs";
+import { z } from "zod";
+
+/**
+ * Settings that may hold secrets. Each can be given directly (`NAME`) or as a
+ * path to a file holding the value (`NAME_FILE`), which is how Docker secrets
+ * are mounted. Giving both is an error, so there is never doubt about which
+ * value is used.
+ */
+const SECRET_KEYS = ["DATABASE_URL"] as const;
+
+const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
+
+/** Role names that must never be used by the running application. */
+const FORBIDDEN_DATABASE_USERS = new Set(["postgres", "root", "admin", "lexora_owner"]);
+
+const port = z.coerce.number().int().min(1).max(65_535);
+
+const databaseUrl = z
+  .string()
+  .min(1)
+  .superRefine((value, ctx) => {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      ctx.addIssue({ code: "custom", message: "must be a valid URL" });
+      return;
+    }
+    if (url.protocol !== "postgresql:" && url.protocol !== "postgres:") {
+      ctx.addIssue({ code: "custom", message: "must use the postgresql:// scheme" });
+    }
+    if (url.username === "" || url.password === "") {
+      ctx.addIssue({ code: "custom", message: "must include a user name and password" });
+    }
+    if (FORBIDDEN_DATABASE_USERS.has(decodeURIComponent(url.username))) {
+      ctx.addIssue({
+        code: "custom",
+        message: "must use the least-privilege application role, not a superuser or owner role",
+      });
+    }
+    if (url.pathname.length <= 1) {
+      ctx.addIssue({ code: "custom", message: "must name a database" });
+    }
+  });
+
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    HOST: z.string().min(1).default("127.0.0.1"),
+    PORT: port.default(3000),
+    LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
+    DATABASE_URL: databaseUrl,
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+    /**
+     * Number of reverse proxies in front of the API whose X-Forwarded-For
+     * headers are trusted. 0 when the API is reached directly.
+     */
+    TRUST_PROXY: z.coerce.number().int().min(0).max(3).default(0),
+  })
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV !== "production") {
+      return;
+    }
+    // DATABASE_URL may already have failed its own checks; refinements can
+    // still run in that case, so parse defensively.
+    let password = "";
+    try {
+      password = decodeURIComponent(new URL(env.DATABASE_URL).password);
+    } catch {
+      return;
+    }
+    if (password.length < 24) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DATABASE_URL"],
+        message: "password must be at least 24 characters in production",
+      });
+    }
+    if (env.LOG_LEVEL === "debug" || env.LOG_LEVEL === "trace") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["LOG_LEVEL"],
+        message: "debug and trace logging are not allowed in production",
+      });
+    }
+  });
+
+export type Env = z.infer<typeof envSchema>;
+
+export interface Config {
+  nodeEnv: Env["NODE_ENV"];
+  isProduction: boolean;
+  host: string;
+  port: number;
+  logLevel: Env["LOG_LEVEL"];
+  databaseUrl: string;
+  databasePoolMax: number;
+  trustProxy: number;
+}
+
+/** Thrown when settings are missing or invalid. Never contains setting values. */
+export class ConfigError extends Error {
+  constructor(public readonly problems: string[]) {
+    super(`Invalid configuration:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
+    this.name = "ConfigError";
+  }
+}
+
+type RawEnv = Record<string, string | undefined>;
+type ReadFile = (path: string) => string;
+
+const defaultReadFile: ReadFile = (path) => readFileSync(path, "utf8");
+
+/** Resolves `NAME_FILE` variables into `NAME`. */
+function resolveSecretFiles(raw: RawEnv, readFile: ReadFile): { env: RawEnv; problems: string[] } {
+  const env: RawEnv = { ...raw };
+  const problems: string[] = [];
+
+  for (const key of SECRET_KEYS) {
+    const fileKey = `${key}_FILE`;
+    const filePath = raw[fileKey];
+    if (filePath === undefined || filePath === "") {
+      continue;
+    }
+    if (raw[key] !== undefined && raw[key] !== "") {
+      problems.push(`${key}: set either ${key} or ${fileKey}, not both`);
+      continue;
+    }
+    try {
+      // Remove the trailing newline that editors and `echo` add.
+      env[key] = readFile(filePath).replace(/\r?\n$/, "");
+    } catch {
+      problems.push(`${fileKey}: the file could not be read`);
+    }
+  }
+  return { env, problems };
+}
+
+/**
+ * Validates settings once, at startup. The process must not start with
+ * missing or unsafe settings. Error messages name the setting and the rule,
+ * never the value, so secrets cannot end up in logs.
+ */
+export function loadConfig(
+  raw: RawEnv = process.env,
+  readFile: ReadFile = defaultReadFile,
+): Config {
+  const { env, problems } = resolveSecretFiles(raw, readFile);
+  const parsed = envSchema.safeParse(env);
+
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const key = issue.path.join(".") || "(environment)";
+      const message = issue.code === "invalid_type" ? "is required" : issue.message;
+      problems.push(`${key}: ${message}`);
+    }
+  }
+  if (problems.length > 0 || !parsed.success) {
+    throw new ConfigError(problems);
+  }
+
+  const e = parsed.data;
+  return {
+    nodeEnv: e.NODE_ENV,
+    isProduction: e.NODE_ENV === "production",
+    host: e.HOST,
+    port: e.PORT,
+    logLevel: e.LOG_LEVEL,
+    databaseUrl: e.DATABASE_URL,
+    databasePoolMax: e.DATABASE_POOL_MAX,
+    trustProxy: e.TRUST_PROXY,
+  };
+}
