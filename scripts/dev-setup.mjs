@@ -5,7 +5,7 @@
 // - Never prints a secret.
 // - Everything it writes is ignored by Git (see .gitignore).
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,13 +21,29 @@ const ENV_FILES = [join("apps", "api", ".env"), join("apps", "api", ".env.test")
 
 const exists = (relativePath) => existsSync(join(root, relativePath));
 
-function write(relativePath, content) {
+/**
+ * File permissions (they matter on Linux and macOS; Windows ignores them):
+ *
+ * - Env files: 0600, read only by you.
+ * - Secret files: 0644 inside a 0700 `secrets/` folder. Docker mounts each
+ *   secret file into the database container as-is, where PostgreSQL's init
+ *   script runs as the container's `postgres` user, not as you; a 0600 file
+ *   would be unreadable there and the database roles would not be created.
+ *   The 0700 folder still stops other users on this machine from reading
+ *   them.
+ */
+function write(relativePath, content, mode) {
   const path = join(root, relativePath);
   mkdirSync(dirname(path), { recursive: true });
   // "wx" fails if the file appeared in the meantime: never overwrite.
-  writeFileSync(path, content, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  writeFileSync(path, content, { encoding: "utf8", mode, flag: "wx" });
+  // The mode given above is reduced by the umask; set it exactly.
+  chmodSync(path, mode);
   console.log(`created  ${relativePath}`);
 }
+
+const SECRET_MODE = 0o644;
+const ENV_MODE = 0o600;
 
 const existing = [...SECRET_FILES, ...ENV_FILES].filter(exists);
 
@@ -75,10 +91,22 @@ function apiEnv({ nodeEnv, logLevel, database }) {
   ].join("\n");
 }
 
-write(SECRET_FILES[0], superuserPassword);
-write(SECRET_FILES[1], ownerPassword);
-write(SECRET_FILES[2], appPassword);
-write(ENV_FILES[0], apiEnv({ nodeEnv: "development", logLevel: "debug", database: "lexora_dev" }));
-write(ENV_FILES[1], apiEnv({ nodeEnv: "test", logLevel: "silent", database: "lexora_test" }));
+const secretsDir = join(root, "secrets");
+mkdirSync(secretsDir, { recursive: true });
+chmodSync(secretsDir, 0o700);
+
+write(SECRET_FILES[0], superuserPassword, SECRET_MODE);
+write(SECRET_FILES[1], ownerPassword, SECRET_MODE);
+write(SECRET_FILES[2], appPassword, SECRET_MODE);
+write(
+  ENV_FILES[0],
+  apiEnv({ nodeEnv: "development", logLevel: "debug", database: "lexora_dev" }),
+  ENV_MODE,
+);
+write(
+  ENV_FILES[1],
+  apiEnv({ nodeEnv: "test", logLevel: "silent", database: "lexora_test" }),
+  ENV_MODE,
+);
 
 console.log("\nNext: npm run db:up && npm run db:migrate && npm run db:migrate:test");

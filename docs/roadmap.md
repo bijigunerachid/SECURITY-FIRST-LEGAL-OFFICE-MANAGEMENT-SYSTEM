@@ -255,7 +255,18 @@ Problems found and fixed during this phase:
   in the shadow database. The migration now checks for the table first, and
   `db:migrate:create` requires a name so it never waits at a prompt.
 
-Not verified in this phase: the CI workflow itself (runs on first push), and
+**First CI run (2026-10-18).** The lint, type, unit test, build and audit job
+and the security scan job passed on Node.js 24. The integration job failed:
+the database started without its roles on Linux (finding F13 in the threat
+model). Reproduced locally with a throwaway container that mimics Linux file
+ownership, fixed, and each part verified: the new health check reports the
+broken database as unhealthy where `pg_isready` reported it healthy; old
+file permissions now stop with a clear message; new permissions create all
+roles and databases and allow login; `setup:dev` produces folder 700,
+secrets 644 and env files 600 even with umask 077. End-to-end tests have not
+run in CI yet (they were skipped after the failure).
+
+Not verified in this phase: a passing CI run of the integration and end-to-end job, and
 the Node.js 24 runtime locally (the workstation still has 22.14.0).
 
 ### Phase 1 — Security plan and repository basics

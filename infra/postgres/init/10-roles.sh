@@ -15,6 +15,17 @@
 # so they never appear in this script, the image or the process list.
 set -eu
 
+# Fail with a clear message instead of a bare "Permission denied". If this
+# script fails, the data folder is left behind and later starts skip
+# initialisation, so the roles would silently never be created.
+for name in lexora_owner_password lexora_app_password; do
+  if [ ! -r "/run/secrets/$name" ]; then
+    echo "10-roles.sh: /run/secrets/$name is missing or not readable by user $(id -un)." >&2
+    echo "10-roles.sh: secret files must be readable inside the container (see secrets/README.md)." >&2
+    exit 1
+  fi
+done
+
 owner_password="$(cat /run/secrets/lexora_owner_password)"
 app_password="$(cat /run/secrets/lexora_app_password)"
 

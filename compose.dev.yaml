@@ -26,8 +26,18 @@ services:
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:55432:5432"
+    # Healthy only when initialisation has really finished: the server accepts
+    # TCP connections (which it does not do during initialisation) AND both
+    # Lexora roles and the test database exist. `pg_isready` alone reports
+    # healthy even when initialisation failed and the roles are missing.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d lexora_dev"]
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$$(cat /run/secrets/postgres_superuser_password)"
+          psql -h 127.0.0.1 -U postgres -d lexora_test -tAc
+          "SELECT count(*) FROM pg_roles WHERE rolname IN ('lexora_owner', 'lexora_app')"
+          | grep -qx 2
       interval: 5s
       timeout: 3s
       retries: 20
