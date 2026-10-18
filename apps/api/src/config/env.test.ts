@@ -4,9 +4,20 @@ import { ConfigError, loadConfig } from "./env.js";
 const APP_PASSWORD = "test-only-app-password-long-enough";
 const validUrl = `postgresql://lexora_app:${APP_PASSWORD}@db:5432/lexora`;
 
+// A real-looking key is not needed: any 32 bytes, base64-encoded.
+const TEST_KEY = Buffer.alloc(32, 1).toString("base64");
+
+/** Required settings other than the database. */
+const required = {
+  APP_ORIGIN: "http://127.0.0.1:5173",
+  MFA_ENCRYPTION_KEY: TEST_KEY,
+};
+const productionRequired = { ...required, APP_ORIGIN: "https://lexora.office.example" };
+
 const base = {
   NODE_ENV: "development",
   DATABASE_URL: validUrl,
+  ...required,
 };
 
 function problemsFor(env: Record<string, string | undefined>, readFile?: (p: string) => string) {
@@ -33,6 +44,12 @@ describe("loadConfig", () => {
       databaseUrl: validUrl,
       databasePoolMax: 10,
       trustProxy: 0,
+      appOrigin: "http://127.0.0.1:5173",
+      mfaEncryptionKey: Buffer.alloc(32, 1),
+      mfaEncryptionKeyPrevious: null,
+      sessionIdleMs: 30 * 60_000,
+      sessionAbsoluteMs: 10 * 3_600_000,
+      argon2: { memoryKib: 65_536, iterations: 3 },
     });
   });
 
@@ -86,7 +103,7 @@ describe("loadConfig", () => {
   describe("secret files", () => {
     it("reads DATABASE_URL from DATABASE_URL_FILE and strips the trailing newline", () => {
       const config = loadConfig(
-        { NODE_ENV: "development", DATABASE_URL_FILE: "/run/secrets/database_url" },
+        { ...required, NODE_ENV: "development", DATABASE_URL_FILE: "/run/secrets/database_url" },
         (path) => {
           expect(path).toBe("/run/secrets/database_url");
           return `${validUrl}\n`;
@@ -102,7 +119,7 @@ describe("loadConfig", () => {
 
     it("reports an unreadable secret file without exposing its path contents", () => {
       const problems = problemsFor(
-        { NODE_ENV: "development", DATABASE_URL_FILE: "/missing" },
+        { ...required, NODE_ENV: "development", DATABASE_URL_FILE: "/missing" },
         () => {
           throw new Error("ENOENT");
         },
@@ -114,6 +131,7 @@ describe("loadConfig", () => {
   describe("production", () => {
     it("requires a database password of at least 24 characters", () => {
       const problems = problemsFor({
+        ...productionRequired,
         NODE_ENV: "production",
         DATABASE_URL: "postgresql://lexora_app:short@db:5432/lexora",
       });
@@ -122,6 +140,7 @@ describe("loadConfig", () => {
 
     it("refuses debug logging", () => {
       const problems = problemsFor({
+        ...productionRequired,
         NODE_ENV: "production",
         DATABASE_URL: validUrl,
         LOG_LEVEL: "debug",
@@ -131,6 +150,7 @@ describe("loadConfig", () => {
 
     it("accepts a strong production configuration", () => {
       const config = loadConfig({
+        ...productionRequired,
         NODE_ENV: "production",
         DATABASE_URL: validUrl,
         HOST: "0.0.0.0",
@@ -138,6 +158,70 @@ describe("loadConfig", () => {
       });
       expect(config.isProduction).toBe(true);
       expect(config.trustProxy).toBe(1);
+    });
+  });
+
+  describe("authentication settings", () => {
+    it.each([
+      ["too short", Buffer.alloc(16, 1).toString("base64")],
+      ["too long", Buffer.alloc(48, 1).toString("base64")],
+      ["not base64", "this is not base64 at all!!"],
+    ])("rejects an MFA encryption key that is %s", (_label, key) => {
+      const problems = problemsFor({ ...base, MFA_ENCRYPTION_KEY: key });
+      expect(problems).toEqual([
+        expect.stringMatching(/^MFA_ENCRYPTION_KEY: must be exactly 32 bytes/),
+      ]);
+      expect(problems.join()).not.toContain(key);
+    });
+
+    it("reads the MFA key from a secret file", () => {
+      const config = loadConfig(
+        {
+          NODE_ENV: "development",
+          DATABASE_URL: validUrl,
+          APP_ORIGIN: required.APP_ORIGIN,
+          MFA_ENCRYPTION_KEY_FILE: "/run/secrets/mfa",
+        },
+        () => `${TEST_KEY}
+`,
+      );
+      expect(config.mfaEncryptionKey.equals(Buffer.alloc(32, 1))).toBe(true);
+    });
+
+    it.each(["http://127.0.0.1:5173/", "http://127.0.0.1:5173/app", "not-a-url"])(
+      "rejects APP_ORIGIN %j (must be a bare origin)",
+      (value) => {
+        expect(problemsFor({ ...base, APP_ORIGIN: value })).toEqual([
+          expect.stringMatching(/^APP_ORIGIN: /),
+        ]);
+      },
+    );
+
+    it("requires an https:// origin in production", () => {
+      const problems = problemsFor({
+        ...productionRequired,
+        NODE_ENV: "production",
+        DATABASE_URL: validUrl,
+        APP_ORIGIN: "http://lexora.office.example",
+      });
+      expect(problems).toEqual([expect.stringMatching(/^APP_ORIGIN: must use https/)]);
+    });
+
+    it.each([
+      ["ARGON2_MEMORY_KIB", "16384"],
+      ["ARGON2_ITERATIONS", "1"],
+    ])("refuses %s below the OWASP minimum, in every environment", (key, value) => {
+      for (const NODE_ENV of ["development", "test"]) {
+        expect(problemsFor({ ...base, NODE_ENV, [key]: value })).toEqual([
+          expect.stringMatching(new RegExp(`^${key}: `)),
+        ]);
+      }
+    });
+
+    it("bounds session lifetimes", () => {
+      expect(
+        problemsFor({ ...base, SESSION_IDLE_MINUTES: "1", SESSION_ABSOLUTE_HOURS: "48" }),
+      ).toHaveLength(2);
     });
   });
 });

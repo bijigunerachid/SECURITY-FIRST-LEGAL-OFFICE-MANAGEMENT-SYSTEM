@@ -1,0 +1,37 @@
+{
+  "description": "Synthetic accounts for end-to-end tests only. Created in the *_test database by seed-e2e.ts. Never use outside tests.",
+  "password": "olive tree beside the old harbour",
+  "totpSecret": "KRSXG5CPNZWHSRKFGJSVMMZVGIZDGNBV",
+  "accounts": {
+    "adminDesktop": {
+      "email": "admin.desktop@e2e.test",
+      "name": "Amina Desktop",
+      "role": "admin",
+      "mfa": true
+    },
+    "adminPhone": {
+      "email": "admin.phone@e2e.test",
+      "name": "Amina Phone",
+      "role": "admin",
+      "mfa": true
+    },
+    "lawyer": {
+      "email": "lawyer@e2e.test",
+      "name": "Youssef Lawyer",
+      "role": "lawyer",
+      "mfa": false
+    },
+    "freshAdminDesktop": {
+      "email": "fresh.desktop@e2e.test",
+      "name": "Karim Desktop",
+      "role": "admin",
+      "mfa": false
+    },
+    "freshAdminPhone": {
+      "email": "fresh.phone@e2e.test",
+      "name": "Karim Phone",
+      "role": "admin",
+      "mfa": false
+    }
+  }
+}

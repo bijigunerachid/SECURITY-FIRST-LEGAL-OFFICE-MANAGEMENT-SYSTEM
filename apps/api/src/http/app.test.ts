@@ -24,7 +24,7 @@ describe("security headers and caching", () => {
 
   it("applies the same headers to error responses", async () => {
     const { app } = testApp();
-    const res = await request(app).get("/api/does-not-exist").expect(404);
+    const res = await request(app).get("/api/does-not-exist").expect(401);
     expect(res.headers["cache-control"]).toBe("no-store");
     expect(res.headers["content-security-policy"]).toContain("default-src 'none'");
   });
@@ -52,7 +52,7 @@ describe("request IDs", () => {
 
   it("puts the same ID in error bodies so support can find the log line", async () => {
     const { app } = testApp();
-    const res = await request(app).get("/api/nope").expect(404);
+    const res = await request(app).get("/api/nope").expect(401);
     expect(res.body.error.requestId).toBe(res.headers["x-request-id"]);
   });
 });
@@ -81,9 +81,17 @@ describe("health endpoints", () => {
 });
 
 describe("request bodies", () => {
-  it("answers unknown routes with the shared 404 shape", async () => {
+  it("answers anonymous requests to unknown API routes with 401, so routes cannot be discovered", async () => {
     const { app } = testApp();
-    const res = await request(app).get("/api/unknown").expect(404);
+    const res = await request(app).get("/api/unknown").expect(401);
+    expect(apiErrorResponseSchema.parse(res.body).error.code).toBe("unauthenticated");
+    // Same answer as a real protected route.
+    await request(app).get("/api/admin/users").expect(401);
+  });
+
+  it("answers unknown paths outside the API with the shared 404 shape", async () => {
+    const { app } = testApp();
+    const res = await request(app).get("/unknown").expect(404);
     expect(apiErrorResponseSchema.parse(res.body).error.code).toBe("not_found");
   });
 
@@ -123,7 +131,7 @@ describe("request bodies", () => {
 
   it("allows bodiless POST requests to reach routing", async () => {
     const { app } = testApp();
-    await request(app).post("/api/unknown").expect(404);
+    await request(app).post("/api/unknown").expect(401);
   });
 });
 

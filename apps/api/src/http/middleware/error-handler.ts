@@ -54,7 +54,16 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
 
   if (err instanceof HttpError) {
     status = err.status;
-    body = { error: { code: err.code, requestId: requestIdOf(req) } };
+    body = {
+      error: {
+        code: err.code,
+        requestId: requestIdOf(req),
+        ...(err.reason === undefined ? {} : { reason: err.reason }),
+      },
+    };
+    if (err.retryAfterSeconds !== undefined) {
+      res.setHeader("Retry-After", String(err.retryAfterSeconds));
+    }
   } else if (err instanceof ZodError) {
     status = 400;
     body = {

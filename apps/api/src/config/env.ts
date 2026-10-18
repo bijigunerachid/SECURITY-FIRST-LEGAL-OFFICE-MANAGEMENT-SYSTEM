@@ -7,7 +7,11 @@ import { z } from "zod";
  * are mounted. Giving both is an error, so there is never doubt about which
  * value is used.
  */
-const SECRET_KEYS = ["DATABASE_URL"] as const;
+const SECRET_KEYS = ["DATABASE_URL", "MFA_ENCRYPTION_KEY", "MFA_ENCRYPTION_KEY_PREVIOUS"] as const;
+
+/** OWASP minimum for Argon2id; enforced in every environment. */
+export const ARGON2_MIN_MEMORY_KIB = 19_456;
+export const ARGON2_MIN_ITERATIONS = 2;
 
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
 
@@ -44,6 +48,39 @@ const databaseUrl = z
     }
   });
 
+/** A 256-bit key, base64-encoded. Generate with `openssl rand -base64 32`. */
+const encryptionKey = z
+  .string()
+  .min(1)
+  .transform((value, ctx) => {
+    const key = Buffer.from(value, "base64");
+    if (key.length !== 32 || key.toString("base64") !== value.replace(/\s/g, "")) {
+      ctx.addIssue({ code: "custom", message: "must be exactly 32 bytes, base64-encoded" });
+      return z.NEVER;
+    }
+    return key;
+  });
+
+/** The web application's origin, e.g. https://lexora.office.example. No path. */
+const origin = z
+  .string()
+  .min(1)
+  .superRefine((value, ctx) => {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      ctx.addIssue({ code: "custom", message: "must be a valid URL" });
+      return;
+    }
+    if (url.origin !== value) {
+      ctx.addIssue({
+        code: "custom",
+        message: "must be an origin only (scheme, host and port), with no path or trailing slash",
+      });
+    }
+  });
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]),
@@ -57,10 +94,31 @@ const envSchema = z
      * headers are trusted. 0 when the API is reached directly.
      */
     TRUST_PROXY: z.coerce.number().int().min(0).max(3).default(0),
+    /** Origin of the web application; requests from any other origin are refused. */
+    APP_ORIGIN: origin,
+    /** Encrypts TOTP secrets. The previous key is only used to read old values. */
+    MFA_ENCRYPTION_KEY: encryptionKey,
+    MFA_ENCRYPTION_KEY_PREVIOUS: encryptionKey.optional(),
+    SESSION_IDLE_MINUTES: z.coerce.number().int().min(5).max(480).default(30),
+    SESSION_ABSOLUTE_HOURS: z.coerce.number().int().min(1).max(24).default(10),
+    ARGON2_MEMORY_KIB: z.coerce
+      .number()
+      .int()
+      .min(ARGON2_MIN_MEMORY_KIB)
+      .max(1_048_576)
+      .default(65_536),
+    ARGON2_ITERATIONS: z.coerce.number().int().min(ARGON2_MIN_ITERATIONS).max(10).default(3),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") {
       return;
+    }
+    if (!env.APP_ORIGIN.startsWith("https://")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["APP_ORIGIN"],
+        message: "must use https:// in production",
+      });
     }
     // DATABASE_URL may already have failed its own checks; refinements can
     // still run in that case, so parse defensively.
@@ -97,6 +155,12 @@ export interface Config {
   databaseUrl: string;
   databasePoolMax: number;
   trustProxy: number;
+  appOrigin: string;
+  mfaEncryptionKey: Buffer;
+  mfaEncryptionKeyPrevious: Buffer | null;
+  sessionIdleMs: number;
+  sessionAbsoluteMs: number;
+  argon2: { memoryKib: number; iterations: number };
 }
 
 /** Thrown when settings are missing or invalid. Never contains setting values. */
@@ -170,5 +234,11 @@ export function loadConfig(
     databaseUrl: e.DATABASE_URL,
     databasePoolMax: e.DATABASE_POOL_MAX,
     trustProxy: e.TRUST_PROXY,
+    appOrigin: e.APP_ORIGIN,
+    mfaEncryptionKey: e.MFA_ENCRYPTION_KEY,
+    mfaEncryptionKeyPrevious: e.MFA_ENCRYPTION_KEY_PREVIOUS ?? null,
+    sessionIdleMs: e.SESSION_IDLE_MINUTES * 60_000,
+    sessionAbsoluteMs: e.SESSION_ABSOLUTE_HOURS * 3_600_000,
+    argon2: { memoryKib: e.ARGON2_MEMORY_KIB, iterations: e.ARGON2_ITERATIONS },
   };
 }

@@ -4,15 +4,148 @@
 // (MIGRATION_DATABASE_URL, see prisma.config.ts); the running API connects as
 // the least-privilege application role (DATABASE_URL, see src/lib/database.ts).
 //
-// Business models arrive with the phases that need them (see docs/roadmap.md).
+// Secrets are never stored in usable form: passwords as Argon2id hashes,
+// session/reset tokens and recovery codes as SHA-256 hashes, TOTP secrets
+// encrypted with AES-256-GCM (key outside the database).
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
   moduleFormat        = "esm"
   importFileExtension = "js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  admin
+  lawyer
+  assistant
+}
+
+enum AuditOutcome {
+  success
+  failure
+  denied
+}
+
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  /// Stored trimmed and lowercased; unique.
+  email             String    @unique @db.VarChar(254)
+  displayName       String    @map("display_name") @db.VarChar(120)
+  role              Role
+  /// Argon2id PHC string. Null until the user sets a password with a setup token.
+  passwordHash      String?   @map("password_hash")
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(3)
+  disabledAt        DateTime? @map("disabled_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions       Session[]
+  totp           TotpFactor?
+  recoveryCodes  RecoveryCode[]
+  passwordTokens PasswordToken[] @relation("tokenFor")
+  issuedTokens   PasswordToken[] @relation("tokenIssuedBy")
+
+  @@map("app_user")
+}
+
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  /// SHA-256 of the session token. The token itself only exists in the cookie.
+  tokenHash         Bytes     @unique @map("token_hash")
+  userId            String    @map("user_id") @db.Uuid
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt        DateTime  @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(3)
+  /// Set when the second factor was checked (or enrolled) in this session.
+  mfaVerifiedAt     DateTime? @map("mfa_verified_at") @db.Timestamptz(3)
+  /// Set by re-entering the password (and code); unlocks sensitive actions briefly.
+  reauthenticatedAt DateTime? @map("reauthenticated_at") @db.Timestamptz(3)
+  /// Random per-session token the browser must echo in X-CSRF-Token.
+  csrfToken         String    @map("csrf_token") @db.VarChar(64)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("session")
+}
+
+model TotpFactor {
+  userId           String    @id @map("user_id") @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// AES-256-GCM: 12-byte IV, ciphertext, 16-byte tag.
+  secretCiphertext Bytes     @map("secret_ciphertext")
+  /// Identifies which encryption key was used (first bytes of its SHA-256).
+  keyId            String    @map("key_id") @db.VarChar(16)
+  /// Null while enrolment is pending; set once the user proves the code works.
+  confirmedAt      DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  /// Last accepted 30-second time step; a code cannot be used twice.
+  lastUsedStep     BigInt?   @map("last_used_step")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("totp_factor")
+}
+
+model RecoveryCode {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash Bytes     @unique @map("code_hash")
+  usedAt   DateTime? @map("used_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("recovery_code")
+}
+
+/// Single-use token to set a password: account setup or admin-initiated reset.
+model PasswordToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  tokenHash   Bytes     @unique @map("token_hash")
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation("tokenFor", fields: [userId], references: [id], onDelete: Cascade)
+  issuedById  String?   @map("issued_by_id") @db.Uuid
+  issuedBy    User?     @relation("tokenIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("password_token")
+}
+
+/// Fixed-window counters for rate limiting. Keys never contain personal data.
+model RateLimitBucket {
+  key     String   @id @db.VarChar(128)
+  count   Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(3)
+
+  @@index([resetAt])
+  @@map("rate_limit_bucket")
+}
+
+/// Append-only for the application role (INSERT and SELECT only). Each row
+/// stores the SHA-256 of the previous row's hash and its own content, so any
+/// change or deletion breaks the chain and is detected by verification.
+model AuditEvent {
+  id          BigInt       @id @default(autoincrement())
+  occurredAt  DateTime     @map("occurred_at") @db.Timestamptz(3)
+  actorUserId String?      @map("actor_user_id") @db.Uuid
+  action      String       @db.VarChar(64)
+  targetType  String?      @map("target_type") @db.VarChar(32)
+  targetId    String?      @map("target_id") @db.VarChar(64)
+  outcome     AuditOutcome
+  requestId   String?      @map("request_id") @db.VarChar(64)
+  ipAddress   String?      @map("ip_address") @db.VarChar(45)
+  metadata    Json?
+  prevHash    Bytes        @map("prev_hash")
+  hash        Bytes        @unique
+
+  @@index([occurredAt])
+  @@index([actorUserId])
+  @@index([action])
+  @@map("audit_event")
 }

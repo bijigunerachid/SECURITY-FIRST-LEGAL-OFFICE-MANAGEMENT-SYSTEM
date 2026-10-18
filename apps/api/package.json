@@ -15,14 +15,19 @@
     "db:migrate": "node scripts/prisma-with-env.mjs .env migrate deploy",
     "db:migrate:test": "node scripts/prisma-with-env.mjs .env.test migrate deploy",
     "db:migrate:create": "node scripts/prisma-with-env.mjs .env migrate dev --create-only --name",
-    "start:e2e": "node --env-file=.env.test dist/server.js"
+    "start:e2e": "node --env-file=.env.test dist/server.js",
+    "admin": "tsx --conditions=@lexora/source --env-file=.env src/cli/admin.ts",
+    "seed:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/seed-e2e.ts"
   },
   "dependencies": {
     "@lexora/shared": "0.0.0",
+    "@node-rs/argon2": "2.2.1",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "cookie": "2.0.1",
     "express": "5.2.1",
     "helmet": "8.3.0",
+    "otpauth": "9.5.2",
     "pg": "8.23.1",
     "pino": "10.4.0",
     "pino-http": "11.0.0",
