@@ -1,0 +1,19 @@
+# Secret-scanning rules: gitleaks defaults plus project rules.
+
+[extend]
+useDefault = true
+
+# The default rules do not catch passwords inside database connection strings,
+# which is how this project passes database credentials.
+[[rules]]
+id = "postgres-connection-password"
+description = "PostgreSQL connection string with an embedded password"
+regex = '''(?i)\bpostgres(?:ql)?://[^:@\s/]+:([^@\s]{12,})@'''
+secretGroup = 1
+keywords = ["postgres"]
+
+  # Allowed: documentation placeholders such as <app-password>, and fixture
+  # values in tests, which must contain the marker "test-only".
+  [[rules.allowlists]]
+  regexTarget = "secret"
+  regexes = ['''^<[A-Za-z-]+>$''', '''test-only''']

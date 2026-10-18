@@ -84,9 +84,9 @@ Only if invoicing is used in Lexora (Phase 7):
 
 ## Sign-off
 
-| Item | Answer recorded | Reviewed by | Date |
-|---|---|---|---|
-| Sections 1–7 reviewed | | | |
-| Retention periods confirmed and recorded in the architecture | | | |
-| Decision D2 (admin access to matter content) confirmed | | | |
-| Approval to process real client data | | | |
+| Item                                                         | Answer recorded | Reviewed by | Date |
+| ------------------------------------------------------------ | --------------- | ----------- | ---- |
+| Sections 1–7 reviewed                                        |                 |             |      |
+| Retention periods confirmed and recorded in the architecture |                 |             |      |
+| Decision D2 (admin access to matter content) confirmed       |                 |             |      |
+| Approval to process real client data                         |                 |             |      |

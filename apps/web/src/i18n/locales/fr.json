@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "Lexora",
+    "tagline": "Gestion de cabinet d'avocats",
+    "skipToContent": "Aller au contenu principal",
+    "footer": "Accès réservé au personnel autorisé du cabinet."
+  },
+  "language": {
+    "label": "Langue",
+    "fr": "Français",
+    "ar": "العربية"
+  },
+  "status": {
+    "title": "État du système",
+    "description": "Vérifie que l'application et la base de données répondent.",
+    "checking": "Vérification en cours…",
+    "operational": "Opérationnel",
+    "unavailable": "Indisponible",
+    "api": "Application",
+    "database": "Base de données",
+    "lastChecked": "Dernière vérification : {{time}}",
+    "unreachableTitle": "Impossible de joindre le serveur",
+    "unreachableBody": "Vérifiez votre connexion au réseau du cabinet, puis réessayez. Si le problème persiste, contactez l'administrateur.",
+    "retry": "Réessayer"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette page n'existe pas ou n'est plus disponible.",
+    "back": "Retour à l'accueil"
+  },
+  "error": {
+    "title": "Une erreur inattendue s'est produite",
+    "body": "Rechargez la page. Si le problème persiste, contactez l'administrateur.",
+    "reload": "Recharger la page"
+  }
+}

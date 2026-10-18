@@ -1,7 +1,9 @@
 # Architecture
 
-Status: **target design**. No application code exists yet. Each phase updates
-this document to describe what was actually built.
+Status: **Phase 2 (foundation) built.** The skeleton described under
+"[What exists now](#what-exists-now)" is implemented and tested; the rest of
+this document is the target design. Each phase updates it to describe what
+was actually built.
 
 ## Goals
 
@@ -46,42 +48,92 @@ Exact versions are pinned when each dependency is installed, after checking
 current releases and security advisories. They are recorded in the lockfile,
 not in this document.
 
-| Area | Choice |
-|---|---|
-| Runtime | Node.js, current Active LTS line (24.x at time of writing) |
-| Language | TypeScript, strict mode |
-| Web | React, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, React Hook Form, Zod |
-| Localization | French and Arabic, with right-to-left layout for Arabic |
-| API | Express with Helmet, Zod validation, central error handling |
-| Database | PostgreSQL (a currently supported major version) with Prisma |
-| Logging | Pino, structured JSON, with a redaction list |
-| Background jobs | pg-boss, stored in PostgreSQL |
+| Area                       | Choice                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| Runtime                    | Node.js, current Active LTS line (24.x at time of writing)                                         |
+| Language                   | TypeScript, strict mode                                                                            |
+| Web                        | React, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, React Hook Form, Zod           |
+| Localization               | French and Arabic, with right-to-left layout for Arabic                                            |
+| API                        | Express with Helmet, Zod validation, central error handling                                        |
+| Database                   | PostgreSQL (a currently supported major version) with Prisma                                       |
+| Logging                    | Pino, structured JSON, with a redaction list                                                       |
+| Background jobs            | pg-boss, stored in PostgreSQL                                                                      |
 | Rate limiting and sessions | Stored in PostgreSQL. No Redis ([ADR 0005](decisions/0005-postgresql-for-sessions-limits-jobs.md)) |
-| Malware scanning | ClamAV (clamd) on the internal network |
-| Reverse proxy and TLS | Caddy |
-| Deployment | Docker Compose on Docker Engine, Linux host ([ADR 0006](decisions/0006-deployment-host.md)) |
-| Backups | restic, encrypted ([ADR 0007](decisions/0007-backups.md)) |
-| Tests | Vitest, Supertest, real PostgreSQL, Playwright |
+| Malware scanning           | ClamAV (clamd) on the internal network                                                             |
+| Reverse proxy and TLS      | Caddy                                                                                              |
+| Deployment                 | Docker Compose on Docker Engine, Linux host ([ADR 0006](decisions/0006-deployment-host.md))        |
+| Backups                    | restic, encrypted ([ADR 0007](decisions/0007-backups.md))                                          |
+| Tests                      | Vitest, Supertest, real PostgreSQL, Playwright                                                     |
 
-## Repository layout (planned)
+Versions in use (Phase 2), chosen by the
+[dependency policy](security.md#supply-chain): Node.js 22.13+ or 24 (CI and
+production use 24), TypeScript 6.0, React 19.3, React Router 7.18, Vite 8.3,
+Tailwind CSS 4.3, Express 5.2, Prisma 7.10, Zod 4.6, PostgreSQL 18.6, Vitest
+4.1, Playwright 1.63, ESLint 9.39. TypeScript 7, ESLint 10 and React Router 8
+were not adopted yet: typescript-eslint and eslint-plugin-jsx-a11y do not
+support TypeScript 7 or ESLint 10, and React Router 8 requires Node.js 22.22+.
+
+## Repository layout
+
+Folders marked _(later)_ arrive with the phases that need them.
 
 ```
 apps/
-  api/              Express API and background worker
-    prisma/         schema and reviewed migrations
+  api/                  Express API (and, later, the background worker)
+    prisma/             schema and reviewed migrations
+    scripts/            prisma-with-env.mjs: runs Prisma with one explicit env file
     src/
-      config/       settings loading and validation
-      http/         app setup, middleware, error handling
-      modules/      one folder per business area (auth, clients, matters,
-                    documents, calendar, billing, audit, admin)
-      policies/     authorization rules and query scoping
-      lib/          shared helpers (crypto, logging)
-  web/              React application
+      config/           settings loading and validation (env.ts)
+      http/             app setup (app.ts), middleware, error handling, routes
+      lib/              database client and probe, logger
+      generated/        Prisma client (generated, not committed)
+      test/             test helpers and the integration-test guard
+      modules/          (later) one folder per business area
+      policies/         (later) authorization rules and query scoping
+  web/                  React application
+    e2e/                Playwright end-to-end tests
+    src/
+      app/              router and providers
+      components/       layout and UI components (shadcn/ui pattern)
+      features/         one folder per screen or feature (status/)
+      i18n/             French and Arabic translations, direction handling
+      lib/              API client, helpers
+      routes/           not-found and error pages
 packages/
-  shared/           Zod schemas and types shared by API and web
-docs/               this documentation
-infra/              Compose files, Caddy config, host hardening, backup scripts
+  shared/               Zod schemas and types shared by API and web
+infra/
+  postgres/init/        creates database roles and databases on first start
+scripts/                dev-setup.mjs: generates local development settings
+docs/                   this documentation
+compose.dev.yaml        development PostgreSQL
 ```
+
+## What exists now
+
+Phase 2 delivers a hardened skeleton with no business data:
+
+- **API** (`apps/api`): validates settings at startup; serves
+  `/api/health/live` and `/api/health/ready`; applies security headers,
+  `no-store`, JSON-only bodies with a 100 kB limit, request IDs, request
+  logging without headers or query strings, and one error format. On startup
+  it opens its first database connection before accepting requests, so
+  readiness is accurate immediately after a restart.
+- **Database**: PostgreSQL 18.6 in Docker for development, with the
+  `lexora_owner` (migrations) and `lexora_app` (API) roles and the
+  `lexora_dev`, `lexora_test` and `lexora_shadow` databases. One migration
+  removes the application role's access to Prisma's migration history.
+- **Web** (`apps/web`): the application shell (header, language switcher,
+  skip link, footer), a system status page that shows whether the API and
+  database respond, a not-found page and an error page, in French and Arabic
+  with automatic right-to-left layout. Fonts are served from our own origin.
+- **Shared** (`packages/shared`): the health response and error response
+  schemas used by both sides.
+
+How workspaces find `@lexora/shared`: in development, tests and type
+checking, the custom export condition `@lexora/source` (and aliases in the
+Vite and Vitest configs) point to its TypeScript source, so no build step is
+needed. The production build of the API uses the compiled `dist/`, so
+`npm run build` builds `shared` first.
 
 ## Request flow in the API
 
@@ -128,11 +180,11 @@ Retention and final deletion follow the periods confirmed in the
 
 ## Environments
 
-| Environment | Where | Data |
-|---|---|---|
-| Development | Developer workstation, Docker Desktop | Synthetic seed data only |
-| Test / CI | Throwaway containers | Synthetic data, created and destroyed per run |
-| Staging | Isolated machine or VM matching production | Synthetic data only |
-| Production | Office server | Real data, only after the [production gate](roadmap.md#production-gate) |
+| Environment | Where                                      | Data                                                                    |
+| ----------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| Development | Developer workstation, Docker Desktop      | Synthetic seed data only                                                |
+| Test / CI   | Throwaway containers                       | Synthetic data, created and destroyed per run                           |
+| Staging     | Isolated machine or VM matching production | Synthetic data only                                                     |
+| Production  | Office server                              | Real data, only after the [production gate](roadmap.md#production-gate) |
 
 Each environment has its own database, credentials and secrets.

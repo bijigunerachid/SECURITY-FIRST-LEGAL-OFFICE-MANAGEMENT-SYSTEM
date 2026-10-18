@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Colours are defined once as CSS variables and switched for
+ * dark mode, so components only use semantic names (bg-surface, text-muted…).
+ * Layout uses logical properties (ms-/me-/ps-/pe-, start/end) everywhere so
+ * the same markup works left-to-right (French) and right-to-left (Arabic).
+ */
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+}
+
+:root {
+  color-scheme: light;
+  --canvas: #f6f4ef;
+  --surface: #ffffff;
+  --surface-muted: #efece4;
+  --border: #ddd8cc;
+  --ink: #1a2133;
+  --muted: #5b6275;
+  --brand: #1e2a44;
+  --brand-ink: #f6f1e3;
+  --accent: #9a7b2f;
+  --focus: #2f5bd3;
+  --success: #1d6b45;
+  --success-soft: #e3f1e9;
+  --danger: #a52a2a;
+  --danger-soft: #f8e6e4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #11151f;
+    --surface: #181d2a;
+    --surface-muted: #202637;
+    --border: #2d3448;
+    --ink: #e9ebf1;
+    --muted: #a3a9b9;
+    --brand: #e8d9b0;
+    --brand-ink: #161b27;
+    --accent: #d4b56a;
+    --focus: #8fb0ff;
+    --success: #7fd3a6;
+    --success-soft: #16372a;
+    --danger: #f2a39b;
+    --danger-soft: #3d1d1d;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

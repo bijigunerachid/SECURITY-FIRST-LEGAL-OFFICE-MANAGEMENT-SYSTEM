@@ -4,20 +4,21 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: design phase.** There is no application code yet. Do not enter
-> real client data into any version of Lexora until the
+> **Status: foundation (Phase 2).** The hardened skeleton runs, but there are
+> no users, clients or matters yet. Do not enter real client data into any
+> version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
 ## Documentation
 
-| Document | Contents |
-|---|---|
-| [Roadmap](docs/roadmap.md) | Phases, status, open decisions, production gate, verification log |
-| [Architecture](docs/architecture.md) | Components, technology, request flow, environments |
-| [Threat model](docs/threat-model.md) | Assets, trust boundaries, threats, risk register, residual risks |
-| [Security design](docs/security.md) | Authentication, sessions, authorization, documents, encryption, logging |
-| [Privacy and legal checklist](docs/privacy-checklist.md) | Questions for a Moroccan legal or privacy professional |
-| [Decision records](docs/decisions/) | Why the main technical choices were made |
+| Document                                                 | Contents                                                                |
+| -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [Roadmap](docs/roadmap.md)                               | Phases, status, open decisions, production gate, verification log       |
+| [Architecture](docs/architecture.md)                     | Components, technology, request flow, environments                      |
+| [Threat model](docs/threat-model.md)                     | Assets, trust boundaries, threats, risk register, residual risks        |
+| [Security design](docs/security.md)                      | Authentication, sessions, authorization, documents, encryption, logging |
+| [Privacy and legal checklist](docs/privacy-checklist.md) | Questions for a Moroccan legal or privacy professional                  |
+| [Decision records](docs/decisions/)                      | Why the main technical choices were made                                |
 
 ## Principles
 
@@ -29,12 +30,80 @@ French and Arabic.
 - Every change ships with tests, and security claims are backed by tests
   that were actually run.
 
-## Repository setup
+## Development setup
+
+You need Node.js 24 LTS (22.13 or later also works), npm 11, and Docker
+(Docker Desktop on Windows or macOS). Run every command from the repository
+root.
+
+```sh
+npm ci                     # install exact versions; install scripts are disabled (.npmrc)
+npm run generate           # generate the Prisma client
+npm run setup:dev          # create random local passwords and apps/api/.env(.test)
+npm run db:up              # start PostgreSQL (listens on 127.0.0.1:55432 only)
+npm run db:migrate         # apply migrations to the development database
+npx playwright install chromium   # browser for end-to-end tests (once)
+```
+
+Then, in two terminals:
+
+```sh
+npm run dev:api            # API on http://127.0.0.1:3000
+npm run dev:web            # web app on http://127.0.0.1:5173
+```
+
+Open http://127.0.0.1:5173 to see the system status page.
+
+`npm run setup:dev` never overwrites or prints a secret. Everything it
+creates (`secrets/*`, `apps/api/.env`, `apps/api/.env.test`) is ignored by
+Git.
+
+## Checks
+
+These are the checks CI runs on every push and pull request. Run them before
+asking for a merge:
+
+| Command                    | What it checks                                                           |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `npm run lint`             | ESLint, including security rules (no raw SQL strings, no raw HTML)       |
+| `npm run format:check`     | Prettier formatting                                                      |
+| `npm run typecheck`        | TypeScript strict mode in every workspace                                |
+| `npm test`                 | Unit tests                                                               |
+| `npm run test:integration` | Applies migrations to `lexora_test`, then tests against real PostgreSQL  |
+| `npm run build`            | Production build of every workspace                                      |
+| `npm run test:e2e`         | Playwright on the production build, desktop (1366 px) and phone (390 px) |
+| `npm run audit:deps`       | `npm audit` for known vulnerabilities                                    |
+
+`npm run test:e2e` needs `npm run build` first. CI also runs gitleaks over
+the whole Git history and a Trivy scan (see `.github/workflows/ci.yml`).
+
+## Database changes
+
+1. Edit `apps/api/prisma/schema.prisma`.
+2. `npm run db:migrate:create -w @lexora/api -- <short_name>` creates a
+   migration without applying it, after checking it on the shadow database.
+   Review the SQL.
+3. `npm run db:migrate` applies it to the development database.
+
+Never use `prisma migrate reset` or `prisma db push` against anything but
+your own development database.
+
+## Resetting the development database
+
+Only if the development database holds nothing you need. This permanently
+deletes it:
+
+```sh
+npm run db:down
+docker volume rm lexora-dev_pgdata
+```
+
+If you also delete `secrets/` and `apps/api/.env*`, run `npm run setup:dev`
+again before `npm run db:up`. The passwords in those files must match the
+ones the database was created with, so delete them together or not at all.
 
 Line endings are normalised to LF by `.gitattributes`, so scripts work the
 same in Linux containers as on Windows.
-
-Development setup instructions arrive with the foundation phase.
 
 ## Reporting a security problem
 

@@ -25,18 +25,18 @@ Related documents:
 
 ## Status
 
-| Phase | Branch | Status |
-|---|---|---|
-| 0. Repository audit | — | Done (2026-10-18) |
-| 1. Security plan and repository basics | `docs/security-plan` | In review |
-| 2. Foundation | `feature/foundation` | Not started |
-| 3. Identity and sessions | `feature/auth` | Not started |
-| 4. Authorization, clients and matters | `feature/matters` | Not started |
-| 5. Documents | `feature/documents` | Not started |
-| 6. Hearings, deadlines and background jobs | `feature/calendar` | Not started |
-| 7. Fees, invoices and payments | `feature/billing` | Not started |
-| 8. Audit viewer, alerts and administration | `feature/audit-admin` | Not started |
-| 9. Production readiness | `feature/production` | Not started |
+| Phase                                      | Branch                | Status            |
+| ------------------------------------------ | --------------------- | ----------------- |
+| 0. Repository audit                        | —                     | Done (2026-10-18) |
+| 1. Security plan and repository basics     | `docs/security-plan`  | Done (2026-10-18) |
+| 2. Foundation                              | `feature/foundation`  | In review         |
+| 3. Identity and sessions                   | `feature/auth`        | Not started       |
+| 4. Authorization, clients and matters      | `feature/matters`     | Not started       |
+| 5. Documents                               | `feature/documents`   | Not started       |
+| 6. Hearings, deadlines and background jobs | `feature/calendar`    | Not started       |
+| 7. Fees, invoices and payments             | `feature/billing`     | Not started       |
+| 8. Audit viewer, alerts and administration | `feature/audit-admin` | Not started       |
+| 9. Production readiness                    | `feature/production`  | Not started       |
 
 ## Phases
 
@@ -81,8 +81,12 @@ Objective: a hardened, tested skeleton with no business data.
   redaction, and a health endpoint.
 - PostgreSQL via Prisma, with two database roles: a migration owner and a
   least-privilege application role.
-- Docker Compose for development. PostgreSQL is not published on the host.
-- Vitest with a real PostgreSQL test database; Playwright smoke test.
+- Docker Compose for development. PostgreSQL is published on `127.0.0.1`
+  only (changed from the plan, which said not published at all: the API and
+  tests run on the workstation and must reach it; other machines still
+  cannot). Production never publishes it.
+- Vitest with a real PostgreSQL test database; Playwright end-to-end tests
+  of the production build at desktop and phone widths.
 - React app shell with French and Arabic (RTL) localization and an
   accessible layout.
 - CI: lint, format check, type check, unit and integration tests, build,
@@ -172,19 +176,87 @@ recorded here with evidence:
 These decisions belong to the office. Until they are confirmed, the
 recommended default is used and noted as provisional in the design documents.
 
-| # | Question | Provisional default |
-|---|---|---|
-| D1 | Number of users and server hardware | Dedicated machine running Ubuntu Server 24.04 LTS |
-| D2 | Can administrators read matter content? | No. Logged "break-glass" access only |
-| D3 | Password reset channel | Admin-initiated, token given in person. No email service |
-| D4 | MFA scope | Required for administrators; strongly recommended for everyone |
-| D5 | TLS certificate | Office-owned domain with a Let's Encrypt DNS-01 certificate; internal CA as fallback |
-| D6 | Off-site backup | Two rotated, encrypted USB drives, one kept off-site. No cloud copy |
-| D7 | Recovery targets and session timeouts | RPO 24 h, RTO 1 working day; 30 min idle, 10 h absolute |
-| D8 | Document types and size | PDF, DOCX, XLSX, ODT, JPEG, PNG; 25 MB per file |
-| D9 | GitHub repository visibility | Private |
+| #   | Question                                | Provisional default                                                                  |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| D1  | Number of users and server hardware     | Dedicated machine running Ubuntu Server 24.04 LTS                                    |
+| D2  | Can administrators read matter content? | No. Logged "break-glass" access only                                                 |
+| D3  | Password reset channel                  | Admin-initiated, token given in person. No email service                             |
+| D4  | MFA scope                               | Required for administrators; strongly recommended for everyone                       |
+| D5  | TLS certificate                         | Office-owned domain with a Let's Encrypt DNS-01 certificate; internal CA as fallback |
+| D6  | Off-site backup                         | Two rotated, encrypted USB drives, one kept off-site. No cloud copy                  |
+| D7  | Recovery targets and session timeouts   | RPO 24 h, RTO 1 working day; 30 min idle, 10 h absolute                              |
+| D8  | Document types and size                 | PDF, DOCX, XLSX, ODT, JPEG, PNG; 25 MB per file                                      |
+| D9  | GitHub repository visibility            | Private                                                                              |
 
 ## Verification log
+
+### Phase 2 — Foundation
+
+Checks run on 2026-10-18 on Windows 11 with Node.js 22.14.0 and Docker
+Desktop (PostgreSQL 18.6). CI runs the same checks on Node.js 24; CI has not
+run yet because nothing has been pushed.
+
+| Check                                        | Result                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `npm run lint` (ESLint, 0 warnings)          | Pass                                                                                                  |
+| `npm run format:check`                       | Pass                                                                                                  |
+| `npm run typecheck` (3 workspaces)           | Pass                                                                                                  |
+| Unit tests                                   | 63 passed (shared 3, API 41, web 19)                                                                  |
+| Integration tests (real PostgreSQL)          | 9 passed                                                                                              |
+| `npm run build`                              | Pass; largest chunk 319 kB (React), our code 11.6 kB                                                  |
+| End-to-end (Playwright, 1366 px, 390 px)     | 21 passed, 1 skipped by design (keyboard test on desktop only)                                        |
+| End-to-end stability                         | 5 of 5 consecutive build-and-test cycles passed after the fix below                                   |
+| `npm audit` (all dependencies)               | 0 vulnerabilities                                                                                     |
+| Trivy 0.75.0 (vuln, secret, misconfig)       | 0 findings, development dependencies included                                                         |
+| gitleaks 8.30.1 (files to commit)            | No leaks in 93 files; the project rule found all 3 passwords in a copy of the real development `.env` |
+| gitleaks 8.30.1 (Git history)                | No leaks                                                                                              |
+| Manual: API with unsafe settings             | Refused to start, naming 3 problems, no values shown                                                  |
+| Screenshots (French and Arabic, both widths) | Reviewed; one layout fix (below)                                                                      |
+
+Controls proven by breaking them (each test failed, then the code was
+restored):
+
+| Control broken on purpose                         | Caught by                                                   |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `Cache-Control: no-store` removed                 | API unit tests                                              |
+| Token redaction removed from the logger           | API unit tests                                              |
+| JSON-only request bodies disabled                 | API unit tests                                              |
+| Superuser `DATABASE_URL` check disabled           | API unit tests                                              |
+| Query string written to request logs              | API unit tests                                              |
+| Validation and HTTP errors leak internal messages | API unit tests (after the test was strengthened, see below) |
+| Web client trusts unvalidated responses           | Web unit tests                                              |
+| App role granted read access to migration history | Integration tests                                           |
+| `unsafe-inline` added to the web CSP              | End-to-end tests                                            |
+| `$queryRawUnsafe` and `dangerouslySetInnerHTML`   | ESLint                                                      |
+
+Problems found and fixed during this phase:
+
+- **Cold-start readiness bug.** In a fresh process the first database query
+  sometimes took over a second; under load it exceeded the 2-second
+  readiness timeout, so the status page wrongly showed the database as
+  unavailable after a restart (2 of 3 early end-to-end runs failed). The API
+  now opens its first connection before accepting requests, and the
+  end-to-end tests wait for readiness.
+- **Weak test.** Making error responses include internal messages did not
+  fail any test. Every error response is now checked against the strict
+  shared schema.
+- **Secret scanner gap.** gitleaks's default rules miss passwords in
+  PostgreSQL connection strings. A project rule was added and proven.
+- **Duplicate React and Vite.** npm installed peer dependencies at their
+  newest versions, giving two copies of React and Vite and breaking the
+  14-day rule. Fixed with `overrides` and a full reinstall using `--before`.
+- **Vulnerable Prisma dependencies.** Prisma 7.10.0 pulled in packages with
+  High advisories; upgraded to 7.10.1 (documented exception to the cooldown).
+- **Phone header.** At 390 px in French the language switcher wrapped onto a
+  second line; the tagline is now hidden on phones.
+- **Build warning.** A 525 kB bundle; split into cached vendor chunks.
+- **Broken migration command.** Creating a new migration failed because the
+  baseline migration referenced Prisma's history table, which does not exist
+  in the shadow database. The migration now checks for the table first, and
+  `db:migrate:create` requires a name so it never waits at a prompt.
+
+Not verified in this phase: the CI workflow itself (runs on first push), and
+the Node.js 24 runtime locally (the workstation still has 22.14.0).
 
 ### Phase 1 — Security plan and repository basics
 

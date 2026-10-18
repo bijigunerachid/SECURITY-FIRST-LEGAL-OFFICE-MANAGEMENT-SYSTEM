@@ -1,0 +1,54 @@
+{
+  "name": "lexora",
+  "private": true,
+  "description": "Security-first legal office management system",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0"
+  },
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "setup:dev": "node scripts/dev-setup.mjs",
+    "db:up": "docker compose -f compose.dev.yaml up -d --wait db",
+    "db:down": "docker compose -f compose.dev.yaml down",
+    "db:migrate": "npm run db:migrate -w @lexora/api",
+    "db:migrate:test": "npm run db:migrate:test -w @lexora/api",
+    "generate": "npm run generate -w @lexora/api",
+    "dev:api": "npm run dev -w @lexora/api",
+    "dev:web": "npm run dev -w @lexora/web",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration": "npm run test:integration -w @lexora/api",
+    "test:e2e": "npm run test:e2e -w @lexora/web",
+    "build": "npm run build -w @lexora/shared && npm run build -w @lexora/api && npm run build -w @lexora/web",
+    "audit:deps": "npm audit --audit-level=low"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "playwright-core": "1.63.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "vite": "8.3.2"
+  }
+}
