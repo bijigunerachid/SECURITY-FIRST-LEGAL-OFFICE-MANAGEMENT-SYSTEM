@@ -2,6 +2,7 @@ import { ConfigError, loadConfig } from "./config/env.js";
 import { createApp } from "./http/app.js";
 import { createDatabase, createDatabaseProbe } from "./lib/database.js";
 import { createLogger } from "./lib/logger.js";
+import { REQUIRED_TZDATA, tzdataCheck } from "./lib/tzdata.js";
 import { createServices } from "./modules/services.js";
 
 const SHUTDOWN_GRACE_MS = 10_000;
@@ -25,6 +26,15 @@ async function start(): Promise<void> {
   }
 
   const logger = createLogger(config);
+  const tz = tzdataCheck(config.isProduction);
+  if (tz !== "ok") {
+    const detail = { found: process.versions["tz"], required: REQUIRED_TZDATA };
+    if (tz === "refuse") {
+      logger.fatal(detail, "outdated time-zone data: office times would be wrong; update Node.js");
+      process.exit(1);
+    }
+    logger.warn(detail, "outdated time-zone data: office times may be off by one hour");
+  }
   const db = createDatabase(config);
 
   // The API still starts if the database is down, so the problem is visible

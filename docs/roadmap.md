@@ -192,7 +192,9 @@ Built with these changes and choices:
 - **Reminders are in-app** (a bell with the unread count, a reminders page,
   an agenda); no e-mail or SMS (provisional decision D12).
 - **Hearing times** are entered and shown in office time
-  (Africa/Casablanca, including the Ramadan change), stored as instants.
+  (Africa/Casablanca), stored as instants. The offset comes from the
+  runtime's time-zone database, which must be tzdata 2026c or later: Morocco
+  moved to permanent UTC+0 on 2026-09-20 (see the CI note below).
 - Hearings are never deleted (they are cancelled); deadlines and tasks can
   be deleted by lawyers on the team.
 
@@ -319,6 +321,19 @@ Problems found and fixed during this phase:
   now has more sections; they look inside the documents section.
 - End-to-end: counting reminders before the page had loaded always found
   none; the test now waits for the list.
+
+**First CI run (2026-10-21).** Three time tests failed in CI only: CI (Node.js 24) placed 3 November 2026 at UTC+0, this machine (Node.js 22.14) at UTC+1.
+CI was right: Morocco moved to permanent UTC+0 on 2026-09-20, which is in
+tzdata 2026c (IANA, 2026-07-08); Node.js 22.14 ships tzdata 2024b (F26). The
+code was correct; the tests had hard-coded a future offset. They now use
+settled 2025 dates, plus a test of the 2026 change that runs only where the
+time-zone data is current (in CI; skipped on this machine). After the fix, two local full end-to-end runs each had
+timeouts in tests the fix does not touch (the Phase 3 password-link test
+both times, once also the documents test): the open intermittent problem,
+not a new one. The API and the
+worker now check their time-zone data at startup: in production they refuse
+to start with tzdata older than 2026c, elsewhere they warn. The check was
+proven by breaking it.
 
 ### Phase 5 — Documents
 

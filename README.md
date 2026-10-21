@@ -35,9 +35,12 @@ French and Arabic.
 
 ## Development setup
 
-You need Node.js 24 LTS (22.13 or later also works), npm 11, and Docker
+You need Node.js 24 LTS, npm 11, and Docker
 (Docker Desktop on Windows or macOS). Run every command from the repository
-root.
+root. Older Node.js versions start, but carry time-zone data older than
+2026c, which still puts Morocco on UTC+1 after it moved to permanent UTC+0 on
+2026-09-20: hearing times would be off by one hour (the API warns at
+startup, and refuses to start in production).
 
 ```sh
 npm ci                     # install exact versions; install scripts are disabled (.npmrc)

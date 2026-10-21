@@ -75,9 +75,10 @@ async function task(who: Person, base: string, body: Record<string, unknown> = {
 describe("hearings", () => {
   it("stores office time as an instant and gives it back in office time", async () => {
     const { lead, base } = await team();
-    const created = await hearing(lead, base, { startsAt: "2026-11-03T09:30" });
-    expect(created.startsAt).toBe("2026-11-03T08:30:00.000Z");
-    expect(created.startsAtLocal).toBe("2026-11-03T09:30");
+    // A settled past date: Morocco was on UTC+1 in November 2025.
+    const created = await hearing(lead, base, { startsAt: "2025-11-03T09:30" });
+    expect(created.startsAt).toBe("2025-11-03T08:30:00.000Z");
+    expect(created.startsAtLocal).toBe("2025-11-03T09:30");
     expect(created.status).toBe("scheduled");
   });
 

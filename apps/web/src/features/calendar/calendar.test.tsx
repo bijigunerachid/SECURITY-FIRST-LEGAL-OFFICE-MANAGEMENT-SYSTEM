@@ -70,8 +70,9 @@ const matter = (overrides: Partial<typeof permissions> = {}): MatterDetail => ({
 const hearing: Hearing = {
   id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   matterId: MATTER_ID,
-  startsAt: "2026-11-03T08:30:00.000Z",
-  startsAtLocal: "2026-11-03T09:30",
+  // A settled past date: Morocco was on UTC+1 in November 2025.
+  startsAt: "2025-11-04T08:30:00.000Z",
+  startsAtLocal: "2025-11-04T09:30",
   title: "Audience de plaidoirie",
   court: "Tribunal de première instance de Rabat",
   room: "Salle 2",
@@ -117,8 +118,8 @@ describe("hearings on the matter page", () => {
     renderRoute(`/matters/${MATTER_ID}`);
     const section = await screen.findByRole("region", { name: "Audiences" });
     expect(await within(section).findByText("Audience de plaidoirie")).toBeInTheDocument();
-    // 08:30 UTC is 09:30 in Casablanca in November.
-    expect(within(section).getByText(/mardi 3 novembre 2026.*09:30/)).toBeInTheDocument();
+    // 08:30 UTC was 09:30 in Casablanca in November 2025.
+    expect(within(section).getByText(/mardi 4 novembre 2025.*09:30/)).toBeInTheDocument();
     expect(within(section).getByText("Prévue")).toBeInTheDocument();
   });
 

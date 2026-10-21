@@ -52,7 +52,11 @@ function officeParts(date: Date) {
   };
 }
 
-/** The office's offset from UTC at this instant, in milliseconds (Morocco: +1 h, 0 during Ramadan). */
+/**
+ * The office's offset from UTC at this instant, in milliseconds, from the
+ * runtime's time-zone database (Morocco: UTC+1 with UTC+0 during Ramadan
+ * until 2026-09-20, permanent UTC+0 since; needs tzdata 2026c, see lib/tzdata.ts).
+ */
 function officeOffsetMs(date: Date): number {
   const p = officeParts(date);
   const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
