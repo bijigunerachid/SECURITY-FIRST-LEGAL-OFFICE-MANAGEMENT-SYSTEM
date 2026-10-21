@@ -90,7 +90,10 @@ asking for a merge:
 | `npm run test:e2e`         | Playwright on the production build, desktop (1366 px) and phone (390 px) |
 | `npm run audit:deps`       | `npm audit` for known vulnerabilities                                    |
 
-`npm run test:e2e` needs `npm run build` first. CI also runs gitleaks over
+`npm run test:e2e` needs `npm run build` first. If ports 3000 or 4173 are
+used by other software, move the test servers, for example
+`E2E_API_PORT=3310 E2E_WEB_PORT=4310 npm run test:e2e` (in PowerShell, set
+`$env:E2E_API_PORT` and `$env:E2E_WEB_PORT` first). CI also runs gitleaks over
 the whole Git history and a Trivy scan (see `.github/workflows/ci.yml`).
 
 ## Database changes

@@ -256,7 +256,18 @@ Problems found and fixed during this phase:
   correctly rejected by the policy, and a CHECK constraint correctly refusing
   an impossible session); the tests were fixed, not the code.
 
-Not verified in this phase: a CI run of this branch; Node.js 24 locally.
+**First CI run (2026-10-21).** One accessibility test failed on the phone
+run in CI only: a colour-contrast violation right after switching language.
+Reproduced locally by freezing the language buttons halfway through their
+150 ms colour transition (contrast 2.5 to 3.4:1); both final states pass.
+The scan ran while the transition was still in progress, so the
+accessibility helper now waits until finite animations have finished. The
+failing test then passed 20 times out of 20, and the full suite passed.
+End-to-end ports can now be moved with `E2E_API_PORT` and `E2E_WEB_PORT`
+when 3000 or 4173 are taken by other software (defaults unchanged).
+
+Not verified in this phase: a passing CI run of this branch after the fix;
+Node.js 24 locally.
 
 ### Phase 2 — Foundation
 
