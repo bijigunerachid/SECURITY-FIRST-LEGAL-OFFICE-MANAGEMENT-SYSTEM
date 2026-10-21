@@ -15,6 +15,8 @@ export class ApiError extends Error {
     public readonly requestId: string | null = null,
     /** For `password_rejected`: which rule the password broke. */
     public readonly reason: PasswordProblemCode | null = null,
+    /** For `validation_failed`: the paths of the fields the server refused. */
+    public readonly fields: string[] = [],
   ) {
     super(`API request failed: ${code}`);
     this.name = "ApiError";
@@ -77,8 +79,14 @@ async function toError(response: Response): Promise<ApiError> {
   }
   const parsed = apiErrorResponseSchema.safeParse(body);
   if (!parsed.success) return new ApiError(response.status, "invalid_response");
-  const { code, requestId, reason } = parsed.data.error;
-  return new ApiError(response.status, code, requestId, reason ?? null);
+  const { code, requestId, reason, fields } = parsed.data.error;
+  return new ApiError(
+    response.status,
+    code,
+    requestId,
+    reason ?? null,
+    fields?.map((f) => f.path) ?? [],
+  );
 }
 
 async function parseBody<T extends z.ZodType>(response: Response, schema: T): Promise<z.infer<T>> {

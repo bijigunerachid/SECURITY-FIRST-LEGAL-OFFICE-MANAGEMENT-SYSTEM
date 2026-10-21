@@ -1,3 +1,4 @@
+import type { Role } from "@lexora/shared";
 import { LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation } from "react-router";
@@ -52,9 +53,18 @@ export function RedirectIfSignedIn() {
   return <Outlet />;
 }
 
-/** Only for administrators. Others see the same page as for a missing route. */
-export function RequireAdmin({ children }: { children: React.ReactNode }) {
+/**
+ * Only for the given roles. Others see the same page as for a missing route.
+ * Navigation only: the API enforces the same rule on every request.
+ */
+export function RequireRole({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
   const session = useSession();
-  if (session.data?.user.role !== "admin") return <Navigate to="/not-found" replace />;
+  const role = session.data?.user.role;
+  if (role === undefined || !roles.includes(role)) return <Navigate to="/not-found" replace />;
   return <>{children}</>;
+}
+
+/** Only for administrators. */
+export function RequireAdmin({ children }: { children: React.ReactNode }) {
+  return <RequireRole roles={["admin"]}>{children}</RequireRole>;
 }

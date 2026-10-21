@@ -100,3 +100,48 @@ export function Dialog({
     </dialog>
   );
 }
+
+type BadgeTone = "neutral" | "success" | "danger" | "accent";
+const badgeTone: Record<BadgeTone, string> = {
+  neutral: "bg-surface-muted text-muted",
+  success: "bg-success-soft text-success",
+  danger: "bg-danger-soft text-danger",
+  accent: "bg-brand text-brand-ink",
+};
+
+export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+        badgeTone[tone],
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A titled section of a page, with optional actions beside the title. */
+export function Section({
+  title,
+  actions,
+  children,
+}: {
+  title: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={id} className="text-lg font-semibold">
+          {title}
+        </h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}

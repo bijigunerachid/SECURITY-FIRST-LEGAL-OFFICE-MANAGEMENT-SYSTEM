@@ -1,0 +1,149 @@
+import type { MemberRole, Prisma, Role } from "../../generated/prisma/client.js";
+
+/**
+ * The single place that decides who may do what with matters and clients
+ * (ADR 0003, docs/security.md "Authorization").
+ *
+ * - Roles say what kind of action a user may take; matter membership says on
+ *   which matters.
+ * - Administrators never get access through membership, even if they were
+ *   members before a role change. They only read a matter through an active
+ *   break-glass grant (decision D2).
+ * - Lists and searches must use the `visible…Where` helpers below, so they can
+ *   only return records the same rules allow.
+ *
+ * Every function here is pure: services load the facts (membership, grant,
+ * lead status) and ask. Callers turn "no access" into 404, never 403, so the
+ * existence of a record is not revealed.
+ */
+
+export interface Actor {
+  id: string;
+  role: Role;
+}
+
+export type MatterAccess =
+  { kind: "member"; memberRole: MemberRole } | { kind: "break_glass"; until: Date };
+
+export type MatterAction =
+  | "read"
+  | "update"
+  | "manageTeam"
+  | "setRestricted"
+  | "writeParties"
+  | "updateClient"
+  | "claimLead";
+
+export const MATTER_ACTIONS: readonly MatterAction[] = [
+  "read",
+  "update",
+  "manageTeam",
+  "setRestricted",
+  "writeParties",
+  "updateClient",
+  "claimLead",
+];
+
+/** How the actor reaches a matter, from their membership and any break-glass grant. */
+export function matterAccess(
+  actor: Actor,
+  membership: MemberRole | null,
+  breakGlassUntil: Date | null,
+): MatterAccess | null {
+  if (actor.role === "admin") {
+    return breakGlassUntil ? { kind: "break_glass", until: breakGlassUntil } : null;
+  }
+  return membership ? { kind: "member", memberRole: membership } : null;
+}
+
+export interface MatterFacts {
+  /** True when the current lead is an active lawyer who can still act. */
+  leadCanAct: boolean;
+}
+
+export function canOnMatter(
+  actor: Actor,
+  access: MatterAccess | null,
+  action: MatterAction,
+  facts: MatterFacts,
+): boolean {
+  if (!access) return false;
+  // Break-glass access is read-only.
+  if (access.kind === "break_glass") return action === "read";
+
+  const lawyer = actor.role === "lawyer";
+  const lead = access.memberRole === "lead";
+  switch (action) {
+    case "read":
+    case "writeParties":
+    case "updateClient":
+      return true;
+    case "update":
+      return lawyer;
+    case "manageTeam":
+    case "setRestricted":
+      // A lead who has been made an assistant loses these rights.
+      return lawyer && lead;
+    case "claimLead":
+      return lawyer && !lead && !facts.leadCanAct;
+  }
+}
+
+export function matterPermissions(actor: Actor, access: MatterAccess | null, facts: MatterFacts) {
+  return {
+    update: canOnMatter(actor, access, "update", facts),
+    manageTeam: canOnMatter(actor, access, "manageTeam", facts),
+    setRestricted: canOnMatter(actor, access, "setRestricted", facts),
+    writeParties: canOnMatter(actor, access, "writeParties", facts),
+    updateClient: canOnMatter(actor, access, "updateClient", facts),
+    claimLead: canOnMatter(actor, access, "claimLead", facts),
+  };
+}
+
+/** Only lawyers open files and run conflict searches. */
+export const canCreateClientsAndMatters = (actor: Actor): boolean => actor.role === "lawyer";
+export const canSearchConflicts = (actor: Actor): boolean => actor.role === "lawyer";
+/** Who may be placed on a matter team. */
+export const canBeMatterMember = (role: Role): boolean => role === "lawyer" || role === "assistant";
+
+/** A break-glass grant of this actor that has neither expired nor been ended. */
+export function activeGrantWhere(actor: Actor, now: Date) {
+  return { userId: actor.id, expiresAt: { gt: now }, endedAt: null };
+}
+
+/** Matters the actor may see. Used by every list and search. */
+export function visibleMattersWhere(actor: Actor, now: Date): Prisma.MatterWhereInput {
+  if (actor.role === "admin") {
+    return { breakGlassGrants: { some: activeGrantWhere(actor, now) } };
+  }
+  return { members: { some: { userId: actor.id } } };
+}
+
+/**
+ * Clients the actor may see: those with at least one visible matter, plus
+ * clients the actor recorded that have no matter yet (so a matter can be
+ * opened for them).
+ */
+export function visibleClientsWhere(actor: Actor, now: Date): Prisma.ClientWhereInput {
+  const viaMatters: Prisma.ClientWhereInput = {
+    matters: { some: visibleMattersWhere(actor, now) },
+  };
+  if (actor.role === "admin") return viaMatters;
+  return { OR: [viaMatters, { createdById: actor.id, matters: { none: {} } }] };
+}
+
+/**
+ * Client-level rights, from the actor's rights on the client's visible matters.
+ * `ownsUnattached`: the actor recorded this client and it has no matter yet.
+ */
+export function clientPermissions(
+  actor: Actor,
+  matterRights: { updateClient: boolean }[],
+  ownsUnattached: boolean,
+) {
+  const lawyer = canCreateClientsAndMatters(actor);
+  return {
+    update: (ownsUnattached && lawyer) || matterRights.some((m) => m.updateClient),
+    openMatter: lawyer && (ownsUnattached || matterRights.length > 0),
+  };
+}

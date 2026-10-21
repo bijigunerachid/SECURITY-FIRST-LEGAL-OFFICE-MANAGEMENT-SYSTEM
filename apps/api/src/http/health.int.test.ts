@@ -2,13 +2,13 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../config/env.js";
 import { createDatabase, createDatabaseProbe } from "../lib/database.js";
-import { AuthService } from "../modules/auth/auth-service.js";
+import { createServices } from "../modules/services.js";
 import { memoryLogger } from "../test/helpers.js";
 import { createApp } from "./app.js";
 
 const config = loadConfig(process.env);
 const db = createDatabase(config);
-const auth = new AuthService(db, config);
+const services = createServices(db, config);
 
 /** Same credentials, but a port where nothing listens. */
 const deadUrl = new URL(config.databaseUrl);
@@ -26,7 +26,7 @@ describe("readiness against a real PostgreSQL", () => {
       config,
       logger: memoryLogger().logger,
       database: createDatabaseProbe(db),
-      auth,
+      ...services,
     });
     const res = await request(app).get("/api/health/ready").expect(200);
     expect(res.body).toEqual({ status: "ok", checks: { database: "ok" } });
@@ -38,7 +38,7 @@ describe("readiness against a real PostgreSQL", () => {
       config,
       logger: log.logger,
       database: createDatabaseProbe(deadDb, 1_000),
-      auth,
+      ...services,
     });
 
     const started = Date.now();

@@ -39,3 +39,19 @@ added later, it is a second layer, never a replacement.
   IDOR test grid. Code review checks this.
 - A bug in the policy layer is not caught by the database, which is why the
   test grid is mandatory.
+
+## Review after Phase 4 (2026-10-21)
+
+Implemented as decided, in `apps/api/src/modules/policy/matter-policy.ts`.
+Two refinements:
+
+- A record the user cannot see answers 404; a record the user can see but
+  may not change answers 403 (the user already knows it exists).
+- Administrators never get access through membership, even one held before
+  a role change; break-glass grants are the only way in.
+
+Row-level security stays postponed. The access grid (every kind of user
+against every client and matter endpoint), the query-scope tests and the
+checks made by breaking the policy on purpose all pass, and the database
+already refuses deletes of clients, matters and grants. This will be
+reviewed again when documents arrive (Phase 5).

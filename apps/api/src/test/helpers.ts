@@ -3,7 +3,7 @@ import type { Config } from "../config/env.js";
 import { createApp } from "../http/app.js";
 import { createDatabase, type DatabaseProbe } from "../lib/database.js";
 import { createLogger, type Logger } from "../lib/logger.js";
-import { AuthService } from "../modules/auth/auth-service.js";
+import { createServices } from "../modules/services.js";
 
 /** A logger that writes JSON lines to memory so tests can inspect them. */
 export function memoryLogger(level: Config["logLevel"] = "info"): {
@@ -60,7 +60,7 @@ export function unitTestConfig(): Config {
 export function testApp(database: DatabaseProbe = reachableDatabase) {
   const log = memoryLogger();
   const config = unitTestConfig();
-  const auth = new AuthService(createDatabase(config), config);
-  const app = createApp({ config, logger: log.logger, database, auth });
+  const services = createServices(createDatabase(config), config);
+  const app = createApp({ config, logger: log.logger, database, ...services });
   return { app, log };
 }

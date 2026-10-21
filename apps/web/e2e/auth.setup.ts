@@ -19,10 +19,12 @@ for (const [key, file] of [
   });
 }
 
-setup("sign in lawyer", async ({ page }) => {
-  await signIn(page, accounts.lawyer.email);
-  await expect(
-    page.getByRole("heading", { level: 1, name: `Bonjour, ${accounts.lawyer.name}` }),
-  ).toBeVisible();
-  await page.context().storageState({ path: storageState.lawyer });
-});
+for (const key of ["lawyer", "assistant", "colleague"] as const) {
+  setup(`sign in ${key}`, async ({ page }) => {
+    await signIn(page, accounts[key].email);
+    await expect(
+      page.getByRole("heading", { level: 1, name: `Bonjour, ${accounts[key].name}` }),
+    ).toBeVisible();
+    await page.context().storageState({ path: storageState[key] });
+  });
+}

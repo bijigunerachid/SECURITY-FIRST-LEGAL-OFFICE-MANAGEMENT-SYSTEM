@@ -11,10 +11,23 @@ import { cn } from "@/lib/utils";
 function MainNav() {
   const { t } = useTranslation();
   const user = useSession().data?.user;
+  const role = user?.role;
   const links = [
     { to: "/", label: t("nav.home"), end: true },
+    ...(role === "lawyer" || role === "assistant"
+      ? [
+          { to: "/matters", label: t("nav.matters"), end: false },
+          { to: "/clients", label: t("nav.clients"), end: false },
+        ]
+      : []),
+    ...(role === "lawyer" ? [{ to: "/conflicts", label: t("nav.conflicts"), end: false }] : []),
+    ...(role === "admin"
+      ? [
+          { to: "/admin/users", label: t("nav.users"), end: false },
+          { to: "/admin/break-glass", label: t("nav.breakGlass"), end: false },
+        ]
+      : []),
     { to: "/security", label: t("nav.security"), end: false },
-    ...(user?.role === "admin" ? [{ to: "/admin/users", label: t("nav.users"), end: false }] : []),
     { to: "/status", label: t("nav.status"), end: false },
   ];
   return (

@@ -2,12 +2,13 @@ import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Page } from "@playwright/test";
 
 /**
- * Chrome reports every HTTP error response as a console error. 401 and 403
- * from the API are expected answers here (signed-out session check,
- * "confirm your identity"), so only those exact messages are ignored.
+ * Chrome reports every HTTP error response as a console error. 401, 403 and
+ * 404 from the API are expected answers here (signed-out session check,
+ * "confirm your identity", and a matter the user may not see, which the API
+ * reports as not found), so only those exact messages are ignored.
  */
 const EXPECTED_NETWORK_ERROR =
-  /Failed to load resource: the server responded with a status of 40[13]/;
+  /Failed to load resource: the server responded with a status of 40[134]/;
 
 /**
  * Fails any test in which the page logs an unexpected error or the browser
