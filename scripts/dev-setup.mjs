@@ -83,6 +83,23 @@ function laterSettings(environment) {
         `MFA_ENCRYPTION_KEY=${newKey()}`,
       ],
     },
+    {
+      key: "DOCUMENT_STORAGE_DIR",
+      lines: [
+        "# Private folder for uploaded documents (ignored by Git). Absolute path.",
+        `DOCUMENT_STORAGE_DIR=${join(root, "storage", `documents-${environment === "test" ? "test" : "dev"}`)}`,
+      ],
+    },
+    {
+      key: "CLAMAV_PORT",
+      lines: [
+        environment === "test"
+          ? "# Malware scanner for tests: the end-to-end tests start a fake scanner on this port."
+          : "# Malware scanner (ClamAV). Start it with `npm run scanner:up`; uploads are refused while it is down.",
+        "CLAMAV_HOST=127.0.0.1",
+        `CLAMAV_PORT=${environment === "test" ? 53311 : 53310}`,
+      ],
+    },
     ...(environment === "test"
       ? [
           {

@@ -170,3 +170,26 @@ purpose of the search; it is limited to lawyers, rate limited and audited.
 
 Still open: T8 insider misuse until audit viewing and alerts (Phase 8).
 Documents (T10, T14) arrive in Phase 5.
+
+## Findings from Phase 5
+
+| ID  | Finding                                                                                                                                                            | Severity | Status                                                                 | Resolution                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F22 | A download integrity check made only after the last byte was sent would still deliver a changed or damaged file in full, because the response announces its length | Medium   | Verified (by design review, then by a test that changes a stored file) | Fixed: the last chunk is held back until the hash matches; the failure is audited                                                                  |
+| F23 | ClamAV needs 1–2 GB of memory; the development machine has little free memory, so the real scanner runs locally only on request                                    | Process  | Verified                                                               | The real scanner is tested in CI; uploads are refused whenever no scanner answers (fail closed), so a missing scanner can never let a file through |
+
+### Threat mitigation status after Phase 5
+
+Verified by tests: **T10 malicious uploads** (type allowlist from the bytes,
+macros, encryption and damaged archives refused, malware scan that fails
+closed, quarantine, random storage names, attachment downloads with
+`nosniff` and a sandbox CSP); **T14 path traversal** (storage paths are
+server UUIDs only; file names are cleaned and never used as paths); **T5 and
+T7** extended to documents (access grid: every kind of user against all 7
+document endpoints, no file stored or scanned for refused users, no moving a
+document between matters); integrity of stored files on download.
+
+Residual (accepted by design, owner to confirm): ClamAV detects known
+malware only; PDFs may still contain JavaScript or links, which is why
+files are never shown inside the app and are always downloaded; the files of
+hidden documents stay on disk until retention rules exist.

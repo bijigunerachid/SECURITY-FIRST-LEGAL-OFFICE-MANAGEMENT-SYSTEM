@@ -81,6 +81,8 @@ export const RATE_RULES = {
    * (minimum fields only), so mass harvesting is slowed and audited.
    */
   conflictSearchesPerUser: { limit: 60, windowSeconds: 15 * 60 },
+  /** Document uploads (new documents and versions) by one user. */
+  uploadsPerUser: { limit: 120, windowSeconds: 15 * 60 },
   /** All login attempts from one IP address. */
   loginPerIp: { limit: 30, windowSeconds: 15 * 60 },
   /** Failed logins for one account (keyed by hashed e-mail, existing or not). */

@@ -46,6 +46,34 @@ services:
       - no-new-privileges:true
     restart: unless-stopped
 
+  # Malware scanner (ClamAV clamd). Opt-in, because it needs 1–2 GB of memory:
+  # `npm run scanner:up`. While it is down, the API refuses every upload.
+  # ClamAV 1.5.4 (released 2026-08-07); the image is rebuilt with new
+  # signatures every few days, and freshclam keeps them current while it runs.
+  clamav:
+    image: clamav/clamav:1.5.4@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e
+    profiles: [scanner]
+    environment:
+      # Accept streams up to the API's largest upload (100 MB ceiling) and
+      # halve peak memory by not loading a second database during updates.
+      CLAMD_CONF_StreamMaxLength: 100M
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+      # CI sets this to true: the image's bundled signatures are enough there.
+      CLAMAV_NO_FRESHCLAMD: ${CLAMAV_NO_FRESHCLAMD:-false}
+    volumes:
+      - clamav-db:/var/lib/clamav
+    ports:
+      - "127.0.0.1:53310:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
 secrets:
   postgres_superuser_password:
     file: ./secrets/postgres_superuser_password
@@ -56,3 +84,4 @@ secrets:
 
 volumes:
   pgdata:
+  clamav-db:

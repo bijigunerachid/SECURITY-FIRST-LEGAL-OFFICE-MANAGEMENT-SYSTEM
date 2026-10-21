@@ -32,3 +32,18 @@ so storing them inside PostgreSQL would make backups and restores slow.
 
 - Backups must capture the database and the document volume together.
 - ClamAV needs regular signature updates and about 1–2 GB of memory.
+
+## Review after Phase 5 (2026-10-21)
+
+Built as decided, with these details:
+
+- Uploads are sent as the raw file body (`application/octet-stream`, name in
+  `X-File-Name`) rather than as multipart forms, so no form parser is
+  needed.
+- The type check reads only a ZIP's table of contents; nothing is unpacked.
+- Scanning fails closed. Development runs ClamAV only on request because of
+  its memory use; automated tests use a protocol-compatible fake, and CI
+  also tests the real ClamAV.
+- Documents have immutable versions; deleting hides a document and keeps
+  its files.
+- Downloads are checked against the stored SHA-256 as they are sent.

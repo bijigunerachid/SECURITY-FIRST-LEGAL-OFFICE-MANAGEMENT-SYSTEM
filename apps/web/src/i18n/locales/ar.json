@@ -190,7 +190,11 @@
     "not_found": "العنصر غير موجود.",
     "session_expired": "انتهت جلستك. سجّل الدخول من جديد.",
     "unexpected": "حدث خطأ غير متوقع. المرجع: {{ref}}",
-    "validation_failed": "بعض المعلومات ناقصة أو غير صالحة."
+    "validation_failed": "بعض المعلومات ناقصة أو غير صالحة.",
+    "payload_too_large": "الملف كبير جدًا: 25 ميغابايت على الأكثر.",
+    "unsupported_file_type": "ملف مرفوض: لا تُقبل إلا ملفات PDF وWord (.docx) وExcel (.xlsx) وOpenDocument نص (.odt) وJPEG وPNG، دون وحدات ماكرو أو تشفير.",
+    "malware_detected": "ملف مرفوض: اكتشف مضاد الفيروسات برنامجًا خبيثًا. لم يُحفظ الملف.",
+    "scan_unavailable": "مضاد الفيروسات لا يستجيب: لم يُحفظ الملف. أعد المحاولة لاحقًا أو أخبر المسؤول."
   },
   "status": {
     "title": "حالة النظام",
@@ -399,5 +403,46 @@
     "end": "إنهاء الولوج {{reference}}",
     "endShort": "إنهاء",
     "unknownReference": "لا يوجد ملف بهذا المرجع."
+  },
+  "documents": {
+    "title": "الوثائق",
+    "add": "إضافة وثيقة",
+    "addHint": "PDF أو Word (.docx) أو Excel (.xlsx) أو OpenDocument نص (.odt) أو JPEG أو PNG، بحد أقصى 25 ميغابايت. يفحص مضاد الفيروسات كل ملف قبل حفظه.",
+    "empty": "لا توجد وثائق في هذا الملف.",
+    "uploading": "جارٍ إرسال «{{name}}» وفحصه…",
+    "uploaded": "تمت إضافة «{{name}}».",
+    "download": "تنزيل",
+    "downloadNamed": "تنزيل {{name}}",
+    "newVersion": "نسخة جديدة",
+    "newVersionNamed": "إضافة نسخة جديدة من {{name}}",
+    "history": "النسخ",
+    "historyNamed": "عرض نسخ {{name}}",
+    "historyTitle": "نسخ «{{name}}»",
+    "version": "النسخة {{number}}",
+    "versionCount_zero": "{{count}} نسخة",
+    "versionCount_one": "نسخة واحدة",
+    "versionCount_two": "نسختان",
+    "versionCount_few": "{{count}} نسخ",
+    "versionCount_many": "{{count}} نسخة",
+    "versionCount_other": "{{count}} نسخة",
+    "rename": "إعادة التسمية",
+    "renameNamed": "إعادة تسمية {{name}}",
+    "renameTitle": "إعادة تسمية الوثيقة",
+    "titleLabel": "اسم الوثيقة",
+    "remove": "حذف",
+    "removeNamed": "حذف {{name}}",
+    "removeTitle": "حذف الوثيقة",
+    "confirmRemove": "حذف «{{name}}»؟ لن تظهر بعد الآن في الملف، ويُحتفظ بالملف للأرشيف.",
+    "meta": "{{type}} · {{size}} · أضافها {{person}} بتاريخ {{date}}",
+    "tooLargeLocal": "«{{name}}» يتجاوز 25 ميغابايت.",
+    "typeLocal": "«{{name}}» ليس من نوع مقبول (PDF أو Word أو Excel أو OpenDocument نص أو JPEG أو PNG).",
+    "types": {
+      "pdf": "PDF",
+      "docx": "Word",
+      "xlsx": "Excel",
+      "odt": "OpenDocument",
+      "jpeg": "JPEG",
+      "png": "PNG"
+    }
   }
 }

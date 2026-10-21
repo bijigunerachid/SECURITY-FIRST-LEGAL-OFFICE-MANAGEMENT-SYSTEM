@@ -55,6 +55,10 @@ model User {
   mattersCreated   Matter[]          @relation("matterCreatedBy")
   breakGlassGrants BreakGlassGrant[]
 
+  documentsCreated Document[]        @relation("documentCreatedBy")
+  documentsDeleted Document[]        @relation("documentDeletedBy")
+  versionsUploaded DocumentVersion[]
+
   @@map("app_user")
 }
 
@@ -255,6 +259,7 @@ model Matter {
   members          MatterMember[]
   parties          Party[]
   breakGlassGrants BreakGlassGrant[]
+  documents        Document[]
 
   @@index([clientId])
   @@index([status])
@@ -315,4 +320,56 @@ model BreakGlassGrant {
   @@index([userId, expiresAt])
   @@index([matterId])
   @@map("break_glass_grant")
+}
+
+// --- Documents (Phase 5) ---------------------------------------------------------
+//
+// Files live in private storage under random UUID names (ADR 0004); these
+// tables hold their metadata. Versions are immutable; documents are hidden
+// (deleted_at), never deleted, by the application.
+
+/// One document in a matter. Its content is its latest version.
+model Document {
+  id          String    @id @default(uuid()) @db.Uuid
+  matterId    String    @map("matter_id") @db.Uuid
+  matter      Matter    @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  /// The cleaned file name of the first version.
+  title       String    @db.VarChar(200)
+  createdById String    @map("created_by_id") @db.Uuid
+  createdBy   User      @relation("documentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+  deletedById String?   @map("deleted_by_id") @db.Uuid
+  deletedBy   User?     @relation("documentDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  versions DocumentVersion[]
+
+  @@index([matterId])
+  @@map("document")
+}
+
+/// One uploaded file. Written once, after its type check and malware scan.
+model DocumentVersion {
+  id           String   @id @default(uuid()) @db.Uuid
+  documentId   String   @map("document_id") @db.Uuid
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  number       Int
+  /// Random name of the file in storage. Never derived from the upload.
+  storageKey   String   @unique @map("storage_key") @db.Uuid
+  /// Cleaned name offered back when downloading.
+  fileName     String   @map("file_name") @db.VarChar(200)
+  /// Detected from the file's bytes, not taken from the browser.
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  sizeBytes    Int      @map("size_bytes")
+  sha256       Bytes
+  /// Scanner engine and signature version that found the file clean.
+  scannedWith  String   @map("scanned_with") @db.VarChar(64)
+  scannedAt    DateTime @map("scanned_at") @db.Timestamptz(3)
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([documentId, number])
+  @@map("document_version")
 }

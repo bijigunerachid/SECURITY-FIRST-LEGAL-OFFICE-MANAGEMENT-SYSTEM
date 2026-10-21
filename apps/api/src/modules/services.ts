@@ -1,17 +1,36 @@
+import type { Config } from "../config/env.js";
 import type { Database } from "../lib/database.js";
 import { AuthService } from "./auth/auth-service.js";
+import { ClamdScanner, type MalwareScanner } from "./documents/clamd.js";
+import { DocumentService } from "./documents/document-service.js";
+import { DocumentStorage } from "./documents/storage.js";
 import { BreakGlassService } from "./matters/break-glass.js";
 import { MatterService } from "./matters/matter-service.js";
 
-export type ServiceConfig = ConstructorParameters<typeof AuthService>[1];
+export type ServiceConfig = ConstructorParameters<typeof AuthService>[1] &
+  Pick<Config, "documents" | "clamav">;
 
-/** Every service the API uses, wired to one database client. */
-export function createServices(db: Database, config: ServiceConfig) {
+/**
+ * Every service the API uses, wired to one database client. The malware
+ * scanner can be replaced (tests use a fake clamd over the same protocol).
+ * Call `storage.init()` before serving requests.
+ */
+export function createServices(
+  db: Database,
+  config: ServiceConfig,
+  options: { scanner?: MalwareScanner } = {},
+) {
   const auth = new AuthService(db, config);
+  const storage = new DocumentStorage(config.documents.storageDir);
+  const scanner = options.scanner ?? new ClamdScanner(config.clamav);
   return {
     auth,
+    storage,
     matters: new MatterService(db, auth.limiter),
     breakGlass: new BreakGlassService(db),
+    documents: new DocumentService(db, storage, scanner, auth.limiter, {
+      maxUploadBytes: config.documents.maxUploadBytes,
+    }),
   };
 }
 

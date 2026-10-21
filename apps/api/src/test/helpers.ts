@@ -53,6 +53,9 @@ export function unitTestConfig(): Config {
     sessionIdleMs: 30 * 60_000,
     sessionAbsoluteMs: 10 * 3_600_000,
     argon2: { memoryKib: 19_456, iterations: 2 },
+    documents: { storageDir: "/nonexistent/lexora-unit-tests", maxUploadBytes: 25 * 1024 * 1024 },
+    // Nothing listens on port 1: unit tests never reach a scanner.
+    clamav: { host: "127.0.0.1", port: 1, timeoutMs: 5_000 },
   };
 }
 

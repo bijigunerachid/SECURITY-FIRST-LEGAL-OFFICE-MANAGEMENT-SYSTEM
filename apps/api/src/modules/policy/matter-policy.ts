@@ -32,7 +32,9 @@ export type MatterAction =
   | "setRestricted"
   | "writeParties"
   | "updateClient"
-  | "claimLead";
+  | "claimLead"
+  | "writeDocuments"
+  | "deleteDocuments";
 
 export const MATTER_ACTIONS: readonly MatterAction[] = [
   "read",
@@ -42,6 +44,8 @@ export const MATTER_ACTIONS: readonly MatterAction[] = [
   "writeParties",
   "updateClient",
   "claimLead",
+  "writeDocuments",
+  "deleteDocuments",
 ];
 
 /** How the actor reaches a matter, from their membership and any break-glass grant. */
@@ -77,8 +81,10 @@ export function canOnMatter(
     case "read":
     case "writeParties":
     case "updateClient":
+    case "writeDocuments":
       return true;
     case "update":
+    case "deleteDocuments":
       return lawyer;
     case "manageTeam":
     case "setRestricted":
@@ -97,6 +103,8 @@ export function matterPermissions(actor: Actor, access: MatterAccess | null, fac
     writeParties: canOnMatter(actor, access, "writeParties", facts),
     updateClient: canOnMatter(actor, access, "updateClient", facts),
     claimLead: canOnMatter(actor, access, "claimLead", facts),
+    writeDocuments: canOnMatter(actor, access, "writeDocuments", facts),
+    deleteDocuments: canOnMatter(actor, access, "deleteDocuments", facts),
   };
 }
 

@@ -170,6 +170,10 @@ export const matterPermissionsSchema = z.strictObject({
   updateClient: z.boolean(),
   /** A lawyer member may take over the lead when the lead can no longer act. */
   claimLead: z.boolean(),
+  /** Upload documents, add versions, rename. */
+  writeDocuments: z.boolean(),
+  /** Hide (delete) documents. Lawyers on the team only. */
+  deleteDocuments: z.boolean(),
 });
 export type MatterPermissions = z.infer<typeof matterPermissionsSchema>;
 

@@ -27,6 +27,12 @@ export const apiErrorCodes = [
   "mfa_setup_required",
   /** The action needs the password (and code) re-entered in the last few minutes. */
   "reauthentication_required",
+  /** The upload is not one of the accepted document types, has macros, or is encrypted. */
+  "unsupported_file_type",
+  /** The malware scanner found something in the upload. Nothing was stored. */
+  "malware_detected",
+  /** The malware scanner could not be reached. Nothing was stored (fail closed). */
+  "scan_unavailable",
 ] as const;
 export type ApiErrorCode = (typeof apiErrorCodes)[number];
 

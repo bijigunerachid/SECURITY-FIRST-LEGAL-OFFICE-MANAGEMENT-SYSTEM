@@ -190,7 +190,11 @@
     "not_found": "Élément introuvable.",
     "session_expired": "Votre session a expiré. Reconnectez-vous.",
     "unexpected": "Une erreur inattendue s'est produite. Référence : {{ref}}",
-    "validation_failed": "Certaines informations sont manquantes ou invalides."
+    "validation_failed": "Certaines informations sont manquantes ou invalides.",
+    "payload_too_large": "Fichier trop volumineux : 25 Mo au plus.",
+    "unsupported_file_type": "Fichier refusé : seuls les PDF, Word (.docx), Excel (.xlsx), OpenDocument texte (.odt), JPEG et PNG, sans macros ni chiffrement, sont acceptés.",
+    "malware_detected": "Fichier refusé : l'antivirus y a détecté un logiciel malveillant. Il n'a pas été enregistré.",
+    "scan_unavailable": "L'antivirus ne répond pas : le fichier n'a pas été enregistré. Réessayez plus tard ou prévenez l'administrateur."
   },
   "status": {
     "title": "État du système",
@@ -393,5 +397,43 @@
     "end": "Mettre fin à l'accès {{reference}}",
     "endShort": "Mettre fin",
     "unknownReference": "Aucun dossier ne porte cette référence."
+  },
+  "documents": {
+    "title": "Documents",
+    "add": "Ajouter un document",
+    "addHint": "PDF, Word (.docx), Excel (.xlsx), OpenDocument texte (.odt), JPEG ou PNG, 25 Mo au plus. Chaque fichier est analysé par l'antivirus avant d'être enregistré.",
+    "empty": "Aucun document dans ce dossier.",
+    "uploading": "Envoi et analyse de « {{name}} »…",
+    "uploaded": "« {{name}} » a été ajouté.",
+    "download": "Télécharger",
+    "downloadNamed": "Télécharger {{name}}",
+    "newVersion": "Nouvelle version",
+    "newVersionNamed": "Ajouter une nouvelle version de {{name}}",
+    "history": "Versions",
+    "historyNamed": "Voir les versions de {{name}}",
+    "historyTitle": "Versions de « {{name}} »",
+    "version": "Version {{number}}",
+    "versionCount_one": "{{count}} version",
+    "versionCount_many": "{{count}} versions",
+    "versionCount_other": "{{count}} versions",
+    "rename": "Renommer",
+    "renameNamed": "Renommer {{name}}",
+    "renameTitle": "Renommer le document",
+    "titleLabel": "Nom du document",
+    "remove": "Supprimer",
+    "removeNamed": "Supprimer {{name}}",
+    "removeTitle": "Supprimer le document",
+    "confirmRemove": "Supprimer « {{name}} » ? Il n'apparaîtra plus dans le dossier ; le fichier est conservé pour l'historique.",
+    "meta": "{{type}} · {{size}} · ajouté par {{person}} le {{date}}",
+    "tooLargeLocal": "« {{name}} » dépasse 25 Mo.",
+    "typeLocal": "« {{name}} » n'est pas d'un type accepté (PDF, Word, Excel, OpenDocument texte, JPEG ou PNG).",
+    "types": {
+      "pdf": "PDF",
+      "docx": "Word",
+      "xlsx": "Excel",
+      "odt": "OpenDocument",
+      "jpeg": "JPEG",
+      "png": "PNG"
+    }
   }
 }

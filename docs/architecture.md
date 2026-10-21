@@ -96,6 +96,8 @@ apps/
                         every list and search uses
       modules/matters/  clients, matters, teams, parties (matter-service.ts),
                         conflict search, break-glass access, search keys
+      modules/documents/ storage (quarantine, store), file-type detection,
+                        file-name cleaning, ClamAV client, document service
       modules/services.ts  builds every service on one database client
       generated/        Prisma client (generated, not committed)
       test/             test helpers, integration context, integration-test guard
@@ -106,7 +108,8 @@ apps/
       components/       layout and UI components (shadcn/ui pattern)
       features/         one folder per area: auth/ (sign-in, second factor, guards,
                         re-authentication), security/, admin/ (users, break-glass),
-                        matters/ (matters, clients, conflict search), home/, status/
+                        matters/ (matters, clients, conflict search), documents/,
+                        home/, status/
       i18n/             French and Arabic translations, direction handling
       lib/              API client, helpers
       routes/           not-found and error pages
@@ -157,6 +160,20 @@ Phase 3 adds identity and sessions:
   re-authentication dialog that appears whenever the server asks for it and
   then retries the action.
 - **CLI**: `npm run admin -w @lexora/api -- create | recover`.
+
+Phase 5 adds documents:
+
+- **Storage**: a private folder (`DOCUMENT_STORAGE_DIR`) with `quarantine/`
+  and `store/`; files under random UUID names.
+- **Scanner**: ClamAV (clamd) over TCP (`CLAMAV_HOST`, `CLAMAV_PORT`); a
+  `clamav` service in `compose.dev.yaml` under the `scanner` profile
+  (`npm run scanner:up`). Tests use a fake clamd (`src/test/fake-clamd.ts`)
+  speaking the same protocol.
+- **API**: `/api/matters/:matterId/documents` (list, upload, read, rename,
+  delete, new version, download). Uploads are raw file bodies.
+- **Web**: a documents section on the matter page (upload, new version,
+  versions, rename, download, delete), with size and extension checked in the
+  browser before sending.
 
 Phase 4 adds authorization, clients and matters:
 
@@ -221,6 +238,9 @@ to 7.
   year), `MatterMember` (lead or member; exactly one lead), `Party`
   (opposing party, opposing counsel, co-party, witness, expert, other),
   `BreakGlassGrant` (administrator, matter, reason, expiry) (Phase 4)
+- `Document` (matter, title, hidden by whom and when), `DocumentVersion`
+  (number, random storage key, cleaned file name, detected type, size,
+  SHA-256, scanner version; never changed after it is written) (Phase 5)
 - `Document` (metadata, storage key, hash, detected type, scan status)
 - `Hearing`, `Deadline`, `Task`
 - `FeeAgreement`, `Invoice`, `InvoiceLine`, `Payment`, `InvoiceCounter`

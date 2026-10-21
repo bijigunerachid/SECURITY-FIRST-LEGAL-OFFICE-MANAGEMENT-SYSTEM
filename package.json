@@ -16,6 +16,8 @@
     "setup:dev": "node scripts/dev-setup.mjs",
     "db:up": "docker compose -f compose.dev.yaml up -d --wait db",
     "db:down": "docker compose -f compose.dev.yaml down",
+    "scanner:up": "docker compose -f compose.dev.yaml --profile scanner up -d --wait --wait-timeout 300 clamav",
+    "scanner:down": "docker compose -f compose.dev.yaml --profile scanner stop clamav",
     "db:migrate": "npm run db:migrate -w @lexora/api",
     "db:migrate:test": "npm run db:migrate:test -w @lexora/api",
     "generate": "npm run generate -w @lexora/api",

@@ -23,16 +23,14 @@ import {
   canBeMatterMember,
   canOnMatter,
   clientPermissions,
-  matterAccess,
   matterPermissions,
   visibleClientsWhere,
   visibleMattersWhere,
   type Actor,
-  type MatterAccess,
   type MatterAction,
-  type MatterFacts,
 } from "../policy/matter-policy.js";
 import { searchConflicts } from "./conflict-search.js";
+import { accessOf, authorizeMatter, leadCanAct } from "./matter-access.js";
 import { fromDbDate, officeToday, toDbDate } from "./office-date.js";
 import { identifierKey, searchKey } from "./search-text.js";
 
@@ -119,48 +117,6 @@ function toSummary(actor: Actor, row: SummaryRow): MatterSummary {
   };
 }
 
-/** Membership rows as loaded for an access decision. */
-interface AccessRow {
-  members: {
-    userId: string;
-    role: "lead" | "member";
-    user: { role: Actor["role"]; disabledAt: Date | null };
-  }[];
-  breakGlassGrants: { expiresAt: Date }[];
-}
-
-/** The lead can still act when their account is active and they are still a lawyer. */
-function leadCanAct(lead: { user: { role: Actor["role"]; disabledAt: Date | null } } | undefined) {
-  return lead?.user.role === "lawyer" && lead.user.disabledAt === null;
-}
-
-function accessOf(
-  actor: Actor,
-  row: AccessRow,
-): { access: MatterAccess | null; facts: MatterFacts } {
-  const mine = row.members.find((m) => m.userId === actor.id);
-  const lead = row.members.find((m) => m.role === "lead");
-  return {
-    access: matterAccess(actor, mine?.role ?? null, row.breakGlassGrants[0]?.expiresAt ?? null),
-    facts: { leadCanAct: leadCanAct(lead) },
-  };
-}
-
-function accessSelect(actor: Actor, now: Date) {
-  return {
-    members: {
-      where: { OR: [{ role: "lead" as const }, { userId: actor.id }] },
-      select: { userId: true, role: true, user: { select: { role: true, disabledAt: true } } },
-    },
-    breakGlassGrants: {
-      where: activeGrantWhere(actor, now),
-      select: { expiresAt: true },
-      orderBy: { expiresAt: "desc" as const },
-      take: 1,
-    },
-  } satisfies Prisma.MatterSelect;
-}
-
 export interface Page<T> {
   items: T[];
   page: number;
@@ -187,58 +143,13 @@ export class MatterService {
     return recordAudit(this.db, { ...event, requestId: ctx.requestId, ipAddress: ctx.ipAddress });
   }
 
-  /**
-   * Loads a matter and checks `action`. A matter the actor cannot see is
-   * "not found" (and the attempt is audited); a visible matter on which the
-   * action is not allowed is "forbidden".
-   */
-  private async authorizeMatter(
+  private authorizeMatter(
     actor: Actor,
     matterId: string,
     action: MatterAction,
     ctx: RequestContext,
   ) {
-    const now = new Date();
-    const matter = await this.db.matter.findUnique({
-      where: { id: matterId },
-      select: {
-        id: true,
-        status: true,
-        restricted: true,
-        openedOn: true,
-        closedOn: true,
-        ...accessSelect(actor, now),
-      },
-    });
-    if (!matter) throw notFound();
-    const { access, facts } = accessOf(actor, matter);
-    if (!access || !canOnMatter(actor, access, "read", facts)) {
-      await this.audit(
-        {
-          action: "matter.access",
-          outcome: "denied",
-          actorUserId: actor.id,
-          targetType: "matter",
-          targetId: matterId,
-        },
-        ctx,
-      );
-      throw notFound();
-    }
-    if (!canOnMatter(actor, access, action, facts)) {
-      await this.audit(
-        {
-          action: `matter.${action}`,
-          outcome: "denied",
-          actorUserId: actor.id,
-          targetType: "matter",
-          targetId: matterId,
-        },
-        ctx,
-      );
-      throw forbidden();
-    }
-    return { matter, access, facts };
+    return authorizeMatter(this.db, actor, matterId, action, ctx);
   }
 
   private async authorizeClient(

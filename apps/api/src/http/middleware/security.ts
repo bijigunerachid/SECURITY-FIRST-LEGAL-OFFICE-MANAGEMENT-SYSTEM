@@ -42,11 +42,30 @@ function hasBody(req: Request): boolean {
 }
 
 /**
- * Request bodies must be JSON. HTML forms on other sites cannot send
- * `application/json` without a CORS preflight, so this also narrows CSRF.
- * Routes that accept file uploads will opt out explicitly.
+ * The only requests allowed a raw file body (`application/octet-stream`):
+ * a new document, or a new version of one. Like JSON, this content type
+ * cannot be sent cross-site without a CORS preflight.
+ */
+const UPLOAD_ROUTE = /^\/api\/matters\/[^/]+\/documents(?:\/[^/]+\/versions)?\/?$/;
+
+export function isUploadRequest(req: Request): boolean {
+  return (
+    req.method === "POST" &&
+    UPLOAD_ROUTE.test(req.path) &&
+    req.is("application/octet-stream") === "application/octet-stream"
+  );
+}
+
+/**
+ * Request bodies must be JSON, except file uploads on their two routes. HTML
+ * forms on other sites cannot send either type without a CORS preflight, so
+ * this also narrows CSRF.
  */
 export function requireJsonBody(req: Request, _res: Response, next: NextFunction): void {
+  if (isUploadRequest(req)) {
+    next();
+    return;
+  }
   if (METHODS_WITH_BODY.has(req.method) && hasBody(req) && !req.is("application/json")) {
     next(new HttpError(415, "unsupported_media_type"));
     return;

@@ -32,6 +32,8 @@ const allowed = {
   writeParties: true,
   updateClient: true,
   claimLead: false,
+  writeDocuments: true,
+  deleteDocuments: true,
 };
 
 const detail = (overrides: Partial<MatterDetail> = {}): MatterDetail => ({

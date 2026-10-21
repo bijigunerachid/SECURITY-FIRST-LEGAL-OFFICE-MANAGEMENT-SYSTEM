@@ -1,4 +1,5 @@
 import {
+  FILE_NAME_HEADER,
   apiErrorResponseSchema,
   type ApiErrorCode,
   type PasswordProblemCode,
@@ -129,5 +130,41 @@ export async function send<T extends z.ZodType>(
   const response = await call(method, path, body, options);
   if (!response.ok) throw await toError(response);
   if (!schema) return undefined as z.infer<T>;
+  return parseBody(response, schema);
+}
+
+/** Uploads can take longer than other calls (25 MB on a slow office Wi-Fi). */
+const UPLOAD_TIMEOUT_MS = 120_000;
+
+/**
+ * Uploads a file as the raw request body (`application/octet-stream`), with
+ * its name percent-encoded in X-File-Name. The server decides the file's
+ * real type from its bytes and scans it before keeping it.
+ */
+export async function sendFile<T extends z.ZodType>(
+  path: `/api/${string}`,
+  file: Blob,
+  fileName: string,
+  schema: T,
+): Promise<z.infer<T>> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/octet-stream",
+    [FILE_NAME_HEADER]: encodeURIComponent(fileName),
+  };
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: file,
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    });
+  } catch {
+    throw new ApiError(null, "network_error");
+  }
+  if (!response.ok) throw await toError(response);
   return parseBody(response, schema);
 }

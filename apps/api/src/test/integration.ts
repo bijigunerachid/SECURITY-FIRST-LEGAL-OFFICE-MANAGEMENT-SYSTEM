@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import pg from "pg";
 import request from "supertest";
 import type { Express } from "express";
@@ -9,6 +12,7 @@ import { createServices } from "../modules/services.js";
 import { hashPassword } from "../modules/auth/passwords.js";
 import { SESSION_COOKIE } from "../modules/auth/sessions.js";
 import { currentTotp, encryptTotpSecret, newTotpSecret } from "../modules/auth/totp.js";
+import { startFakeClamd, type FakeClamd } from "./fake-clamd.js";
 import { memoryLogger } from "./helpers.js";
 
 /**
@@ -24,10 +28,16 @@ export interface IntegrationContext {
   app: Express;
   /** Owner-role connection, only for cleaning tables and inspecting state. */
   owner: pg.Client;
+  /** Fake malware scanner speaking the clamd protocol; tests can change its mode. */
+  clamd: FakeClamd;
+  /** This test file's own document storage folder (deleted afterwards). */
+  storageDir: string;
   close(): Promise<void>;
 }
 
 const TABLES = [
+  "document_version",
+  "document",
   "break_glass_grant",
   "party",
   "matter_member",
@@ -44,9 +54,16 @@ const TABLES = [
 ];
 
 export async function integrationContext(): Promise<IntegrationContext> {
-  const config = loadConfig(process.env);
+  const clamd = await startFakeClamd();
+  const storageDir = await mkdtemp(join(tmpdir(), "lexora-documents-"));
+  const config: Config = {
+    ...loadConfig(process.env),
+    documents: { storageDir, maxUploadBytes: 2 * 1024 * 1024 },
+    clamav: { host: "127.0.0.1", port: clamd.port, timeoutMs: 2_000 },
+  };
   const db = createDatabase(config);
   const services = createServices(db, config);
+  await services.storage.init();
   const { auth } = services;
   const app = createApp({
     config,
@@ -68,9 +85,13 @@ export async function integrationContext(): Promise<IntegrationContext> {
     auth,
     app,
     owner,
+    clamd,
+    storageDir,
     async close() {
       await owner.end();
       await db.$disconnect();
+      await clamd.close();
+      await rm(storageDir, { recursive: true, force: true });
     },
   };
 }
