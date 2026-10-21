@@ -22,6 +22,7 @@
     "db:migrate:test": "npm run db:migrate:test -w @lexora/api",
     "generate": "npm run generate -w @lexora/api",
     "dev:api": "npm run dev -w @lexora/api",
+    "dev:worker": "npm run dev:worker -w @lexora/api",
     "dev:web": "npm run dev -w @lexora/web",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",

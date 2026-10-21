@@ -48,22 +48,22 @@ Exact versions are pinned when each dependency is installed, after checking
 current releases and security advisories. They are recorded in the lockfile,
 not in this document.
 
-| Area                       | Choice                                                                                             |
-| -------------------------- | -------------------------------------------------------------------------------------------------- |
-| Runtime                    | Node.js, current Active LTS line (24.x at time of writing)                                         |
-| Language                   | TypeScript, strict mode                                                                            |
-| Web                        | React, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, React Hook Form, Zod           |
-| Localization               | French and Arabic, with right-to-left layout for Arabic                                            |
-| API                        | Express with Helmet, Zod validation, central error handling                                        |
-| Database                   | PostgreSQL (a currently supported major version) with Prisma                                       |
-| Logging                    | Pino, structured JSON, with a redaction list                                                       |
-| Background jobs            | pg-boss, stored in PostgreSQL                                                                      |
-| Rate limiting and sessions | Stored in PostgreSQL. No Redis ([ADR 0005](decisions/0005-postgresql-for-sessions-limits-jobs.md)) |
-| Malware scanning           | ClamAV (clamd) on the internal network                                                             |
-| Reverse proxy and TLS      | Caddy                                                                                              |
-| Deployment                 | Docker Compose on Docker Engine, Linux host ([ADR 0006](decisions/0006-deployment-host.md))        |
-| Backups                    | restic, encrypted ([ADR 0007](decisions/0007-backups.md))                                          |
-| Tests                      | Vitest, Supertest, real PostgreSQL, Playwright                                                     |
+| Area                       | Choice                                                                                                           |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Runtime                    | Node.js, current Active LTS line (24.x at time of writing)                                                       |
+| Language                   | TypeScript, strict mode                                                                                          |
+| Web                        | React, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, React Hook Form, Zod                         |
+| Localization               | French and Arabic, with right-to-left layout for Arabic                                                          |
+| API                        | Express with Helmet, Zod validation, central error handling                                                      |
+| Database                   | PostgreSQL (a currently supported major version) with Prisma                                                     |
+| Logging                    | Pino, structured JSON, with a redaction list                                                                     |
+| Background jobs            | Periodic tasks in a PostgreSQL table, run by a worker process ([ADR 0008](decisions/0008-in-house-scheduler.md)) |
+| Rate limiting and sessions | Stored in PostgreSQL. No Redis ([ADR 0005](decisions/0005-postgresql-for-sessions-limits-jobs.md))               |
+| Malware scanning           | ClamAV (clamd) on the internal network                                                                           |
+| Reverse proxy and TLS      | Caddy                                                                                                            |
+| Deployment                 | Docker Compose on Docker Engine, Linux host ([ADR 0006](decisions/0006-deployment-host.md))                      |
+| Backups                    | restic, encrypted ([ADR 0007](decisions/0007-backups.md))                                                        |
+| Tests                      | Vitest, Supertest, real PostgreSQL, Playwright                                                                   |
 
 Versions in use (Phase 2), chosen by the
 [dependency policy](security.md#supply-chain): Node.js 22.13+ or 24 (CI and
@@ -79,7 +79,7 @@ Folders marked _(later)_ arrive with the phases that need them.
 
 ```
 apps/
-  api/                  Express API (and, later, the background worker)
+  api/                  Express API, and the background worker (src/worker.ts)
     prisma/             schema and reviewed migrations
     data/               offline breached-password list (see its README)
     scripts/            prisma-with-env.mjs (Prisma with one explicit env file),
@@ -98,6 +98,8 @@ apps/
                         conflict search, break-glass access, search keys
       modules/documents/ storage (quarantine, store), file-type detection,
                         file-name cleaning, ClamAV client, document service
+      modules/calendar/ hearings, deadlines and tasks, agenda, reminders
+      modules/jobs/     periodic-task scheduler and the worker's tasks
       modules/services.ts  builds every service on one database client
       generated/        Prisma client (generated, not committed)
       test/             test helpers, integration context, integration-test guard
@@ -109,6 +111,7 @@ apps/
       features/         one folder per area: auth/ (sign-in, second factor, guards,
                         re-authentication), security/, admin/ (users, break-glass),
                         matters/ (matters, clients, conflict search), documents/,
+                        calendar/ (hearings, tasks, agenda, reminders),
                         home/, status/
       i18n/             French and Arabic translations, direction handling
       lib/              API client, helpers
@@ -160,6 +163,20 @@ Phase 3 adds identity and sessions:
   re-authentication dialog that appears whenever the server asks for it and
   then retries the action.
 - **CLI**: `npm run admin -w @lexora/api -- create | recover`.
+
+Phase 6 adds hearings, deadlines, tasks and background work:
+
+- **Data**: `hearing`, `matter_task` (deadlines and tasks), `notification`
+  (in-app reminders, unique per person, item and stage) and `scheduled_task`
+  (the periodic tasks, created by the migration).
+- **Worker**: `src/worker.ts`, a separate process from the same code. It
+  runs `reminders` and `purge-expired` every 15 minutes and
+  `quarantine-cleanup` every hour. The API no longer runs any timer of its own.
+- **API**: `/api/matters/:matterId/hearings`, `/api/matters/:matterId/tasks`,
+  `/api/agenda` and `/api/notifications`.
+- **Web**: hearings and "deadlines and tasks" sections on the matter page, an
+  agenda page, a reminders page and a bell with the unread count in the
+  header. Hearing times are always shown in office time.
 
 Phase 5 adds documents:
 
@@ -238,6 +255,9 @@ to 7.
   year), `MatterMember` (lead or member; exactly one lead), `Party`
   (opposing party, opposing counsel, co-party, witness, expert, other),
   `BreakGlassGrant` (administrator, matter, reason, expiry) (Phase 4)
+- `Hearing` (time, court, room, status, outcome), `MatterTask` (deadline or
+  task, due date, assignee, completion), `Notification` (reminders),
+  `ScheduledTask` (periodic tasks) (Phase 6)
 - `Document` (matter, title, hidden by whom and when), `DocumentVersion`
   (number, random storage key, cleaned file name, detected type, size,
   SHA-256, scanner version; never changed after it is written) (Phase 5)

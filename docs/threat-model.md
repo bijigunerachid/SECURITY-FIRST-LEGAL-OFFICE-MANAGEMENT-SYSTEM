@@ -178,6 +178,17 @@ Documents (T10, T14) arrive in Phase 5.
 | F22 | A download integrity check made only after the last byte was sent would still deliver a changed or damaged file in full, because the response announces its length | Medium   | Verified (by design review, then by a test that changes a stored file) | Fixed: the last chunk is held back until the hash matches; the failure is audited                                                                  |
 | F23 | ClamAV needs 1–2 GB of memory; the development machine has little free memory, so the real scanner runs locally only on request                                    | Process  | Verified                                                               | The real scanner is tested in CI; uploads are refused whenever no scanner answers (fail closed), so a missing scanner can never let a file through |
 
+## Findings from Phase 6
+
+| ID  | Finding                                                                                                                                        | Severity | Status                         | Resolution                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------ | --------------------------------------------------------------------------------------- |
+| F24 | Matter references placed inside Arabic sentences were displayed reversed ("0001-2026"), which could make someone open or cite the wrong matter | Low      | Verified (screenshot)          | Fixed: references in sentences are isolated left-to-right; tested                       |
+| F25 | pg-boss, planned for background jobs, creates tables while running; using it would need the right to create tables for the application role    | Medium   | Verified (package source read) | Avoided: in-house scheduler (ADR 0008); the application role still cannot create tables |
+
+Reminders are shown only to their recipient and only while that person can
+still see the matter (a test removes someone from a team and checks their
+reminders disappear). Administrators never receive reminders.
+
 ### Threat mitigation status after Phase 5
 
 Verified by tests: **T10 malicious uploads** (type allowlist from the bytes,

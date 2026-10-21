@@ -7,8 +7,10 @@
   "scripts": {
     "generate": "prisma generate",
     "dev": "tsx watch --conditions=@lexora/source --env-file=.env src/server.ts",
+    "dev:worker": "tsx watch --conditions=@lexora/source --env-file=.env src/worker.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/server.js",
+    "worker": "node --env-file-if-exists=.env dist/worker.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --project unit",
     "test:integration": "npm run db:migrate:test && vitest run --project integration",
@@ -16,6 +18,7 @@
     "db:migrate:test": "node scripts/prisma-with-env.mjs .env.test migrate deploy",
     "db:migrate:create": "node scripts/prisma-with-env.mjs .env migrate dev --create-only --name",
     "start:e2e": "node --env-file=.env.test dist/server.js",
+    "worker:e2e": "node --env-file=.env.test dist/worker.js",
     "admin": "tsx --conditions=@lexora/source --env-file=.env src/cli/admin.ts",
     "seed:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/seed-e2e.ts",
     "fake-clamd:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/fake-clamd.ts"

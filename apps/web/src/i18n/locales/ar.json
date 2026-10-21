@@ -21,7 +21,9 @@
     "matters": "الملفات",
     "clients": "الموكلون",
     "conflicts": "تضارب المصالح",
-    "breakGlass": "الولوج الاستثنائي"
+    "breakGlass": "الولوج الاستثنائي",
+    "agenda": "الأجندة",
+    "notifications": "التذكيرات"
   },
   "roles": {
     "admin": "مسؤول",
@@ -56,7 +58,8 @@
     "mattersCard": "الاطلاع على الملفات التي تنتمي إليها وتحديثها.",
     "clientsCard": "إيجاد موكلي ملفاتك وبيانات الاتصال بهم.",
     "conflictsCard": "التحقق من اسم قبل قبول ملف جديد.",
-    "breakGlassCard": "فتح ملف للاطلاع فقط في حالة الاستعجال. يُسجَّل كل ولوج."
+    "breakGlassCard": "فتح ملف للاطلاع فقط في حالة الاستعجال. يُسجَّل كل ولوج.",
+    "agendaCard": "جلساتك وآجالك في الأسابيع المقبلة."
   },
   "login": {
     "title": "تسجيل الدخول",
@@ -443,6 +446,104 @@
       "odt": "OpenDocument",
       "jpeg": "JPEG",
       "png": "PNG"
+    }
+  },
+  "hearingStatuses": {
+    "scheduled": "مبرمجة",
+    "held": "انعقدت",
+    "postponed": "مؤجلة",
+    "cancelled": "ملغاة"
+  },
+  "taskKinds": {
+    "deadline": "أجل",
+    "task": "مهمة"
+  },
+  "hearings": {
+    "title": "الجلسات",
+    "add": "إضافة جلسة",
+    "addTitle": "جلسة جديدة",
+    "editTitle": "تعديل الجلسة",
+    "edit": "تعديل الجلسة «{{title}}»",
+    "empty": "لا توجد جلسات.",
+    "startsAt": "التاريخ والساعة (بتوقيت المغرب)",
+    "titleLabel": "الموضوع",
+    "court": "المحكمة",
+    "room": "القاعة",
+    "notes": "ملاحظات",
+    "status": "الحالة",
+    "outcome": "النتيجة",
+    "outcomeHint": "تُملأ بعد انعقاد الجلسة أو تأجيلها أو إلغائها."
+  },
+  "tasks": {
+    "title": "الآجال والمهام",
+    "add": "إضافة",
+    "addTitle": "أجل أو مهمة جديدة",
+    "editTitle": "تعديل",
+    "edit": "تعديل «{{title}}»",
+    "kind": "النوع",
+    "kindHint": "الأجل (قانوني أو مسطري) يُذكّر الفريق كله؛ والمهمة تُذكّر الشخص المسندة إليه.",
+    "titleLabel": "العنوان",
+    "dueOn": "التاريخ",
+    "assignee": "مسندة إلى",
+    "nobody": "لا أحد بعينه",
+    "notes": "ملاحظات",
+    "empty": "لا توجد آجال ولا مهام.",
+    "markDone": "تم إنجاز «{{title}}»",
+    "done": "أُنجزت بتاريخ {{date}} من طرف {{name}}",
+    "due": "في {{date}}",
+    "noDate": "بدون تاريخ",
+    "overdue": "متأخر",
+    "assignedTo": "مسندة إلى {{name}}",
+    "remove": "حذف «{{title}}»",
+    "removeTitle": "حذف",
+    "confirmRemove": "حذف «{{title}}»؟ ستُحذف تذكيراتها أيضًا."
+  },
+  "agenda": {
+    "title": "الأجندة",
+    "description": "جلسات ملفاتك وآجالها ومهامها.",
+    "range": "من {{from}} إلى {{to}}",
+    "previous": "الثلاثون يومًا السابقة",
+    "next": "الثلاثون يومًا التالية",
+    "overdue": "متأخر",
+    "empty": "لا شيء مبرمج في هذه الفترة.",
+    "hearing": "جلسة",
+    "matter": "الملف {{reference}} · {{title}}"
+  },
+  "notifications": {
+    "title": "التذكيرات",
+    "description": "تذكيراتك بالجلسات والآجال والمهام. تُنشأ تلقائيًا.",
+    "empty": "لا توجد تذكيرات حاليًا.",
+    "bell": "التذكيرات",
+    "bellUnread_zero": "التذكيرات: {{count}} غير مقروء",
+    "bellUnread_one": "التذكيرات: تذكير واحد غير مقروء",
+    "bellUnread_two": "التذكيرات: تذكيران غير مقروءين",
+    "bellUnread_few": "التذكيرات: {{count}} تذكيرات غير مقروءة",
+    "bellUnread_many": "التذكيرات: {{count}} تذكيرًا غير مقروء",
+    "bellUnread_other": "التذكيرات: {{count}} تذكير غير مقروء",
+    "markAllRead": "تعليم الكل كمقروء",
+    "markRead": "تعليم كمقروء",
+    "unread": "غير مقروء",
+    "due": "في {{date}}",
+    "matter": "الملف {{reference}}",
+    "messages": {
+      "hearing_soon": {
+        "7d": "جلسة بعد أسبوع",
+        "1d": "جلسة غدًا"
+      },
+      "deadline_soon": {
+        "7d": "أجل بعد أسبوع",
+        "2d": "أجل بعد يومين",
+        "0d": "أجل اليوم"
+      },
+      "deadline_overdue": {
+        "overdue": "أجل منقضٍ"
+      },
+      "task_due": {
+        "due": "مهمة يجب إنجازها"
+      },
+      "task_assigned": {
+        "assigned": "مهمة أُسندت إليك"
+      }
     }
   }
 }

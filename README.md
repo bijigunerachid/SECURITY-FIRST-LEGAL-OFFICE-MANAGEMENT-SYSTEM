@@ -4,12 +4,12 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: documents (Phase 5).** Accounts, sign-in with a second factor,
+> **Status: calendar (Phase 6).** Accounts, sign-in with a second factor,
 > user administration, clients, matters, matter teams, parties,
-> conflict-of-interest search, audited break-glass access and matter
-> documents (upload with malware scanning, versions, download) work;
-> hearings, deadlines and invoices come next. Do not enter real client data
-> into any version of Lexora until the
+> conflict-of-interest search, audited break-glass access, matter documents
+> (upload with malware scanning, versions, download), hearings, deadlines,
+> tasks, an agenda and in-app reminders work; fees, invoices and payments
+> come next. Do not enter real client data into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
 ## Documentation
@@ -64,6 +64,7 @@ Then, in two terminals:
 ```sh
 npm run dev:api            # API on http://127.0.0.1:3000
 npm run dev:web            # web app on http://127.0.0.1:5173
+npm run dev:worker         # background worker: reminders and cleanup (optional)
 ```
 
 Create your first administrator account (on a server, this is the only way;

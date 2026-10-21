@@ -1,6 +1,8 @@
 # 0005 — PostgreSQL for sessions, rate limits and background jobs (no Redis)
 
-Status: Accepted (2026-10-18)
+Status: Accepted (2026-10-18). The background-jobs part (pg-boss) is replaced by
+[ADR 0008](0008-in-house-scheduler.md); rate limits use a small fixed-window
+limiter of our own (Phase 3).
 
 ## Context
 

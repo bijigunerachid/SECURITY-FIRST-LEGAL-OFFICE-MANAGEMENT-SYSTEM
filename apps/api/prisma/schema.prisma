@@ -59,6 +59,12 @@ model User {
   documentsDeleted Document[]        @relation("documentDeletedBy")
   versionsUploaded DocumentVersion[]
 
+  hearingsCreated Hearing[]      @relation("hearingCreatedBy")
+  tasksCreated    MatterTask[]   @relation("taskCreatedBy")
+  tasksAssigned   MatterTask[]   @relation("taskAssignee")
+  tasksCompleted  MatterTask[]   @relation("taskCompletedBy")
+  notifications   Notification[]
+
   @@map("app_user")
 }
 
@@ -260,6 +266,9 @@ model Matter {
   parties          Party[]
   breakGlassGrants BreakGlassGrant[]
   documents        Document[]
+  hearings         Hearing[]
+  tasks            MatterTask[]
+  notifications    Notification[]
 
   @@index([clientId])
   @@index([status])
@@ -372,4 +381,117 @@ model DocumentVersion {
 
   @@unique([documentId, number])
   @@map("document_version")
+}
+
+// --- Hearings, deadlines, tasks and reminders (Phase 6) -------------------------------
+
+enum HearingStatus {
+  scheduled
+  held
+  postponed
+  cancelled
+}
+
+/// A court hearing. Times are instants (UTC); the office enters and reads
+/// them in its own time zone (Africa/Casablanca).
+model Hearing {
+  id          String        @id @default(uuid()) @db.Uuid
+  matterId    String        @map("matter_id") @db.Uuid
+  matter      Matter        @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  startsAt    DateTime      @map("starts_at") @db.Timestamptz(3)
+  title       String        @db.VarChar(200)
+  court       String?       @db.VarChar(200)
+  room        String?       @db.VarChar(100)
+  notes       String?       @db.VarChar(2000)
+  status      HearingStatus @default(scheduled)
+  /// What happened, filled in after the hearing.
+  outcome     String?       @db.VarChar(2000)
+  createdById String        @map("created_by_id") @db.Uuid
+  createdBy   User          @relation("hearingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([matterId])
+  @@index([startsAt])
+  @@map("hearing")
+}
+
+enum TaskKind {
+  /// A legal or procedural deadline (appeal, filing...): reminders to the whole team.
+  deadline
+  /// Internal work, optionally assigned to one team member.
+  task
+}
+
+model MatterTask {
+  id            String    @id @default(uuid()) @db.Uuid
+  matterId      String    @map("matter_id") @db.Uuid
+  matter        Matter    @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  kind          TaskKind
+  title         String    @db.VarChar(200)
+  /// Office calendar day; required for deadlines.
+  dueOn         DateTime? @map("due_on") @db.Date
+  notes         String?   @db.VarChar(2000)
+  assigneeId    String?   @map("assignee_id") @db.Uuid
+  assignee      User?     @relation("taskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
+  completedById String?   @map("completed_by_id") @db.Uuid
+  completedBy   User?     @relation("taskCompletedBy", fields: [completedById], references: [id], onDelete: Restrict)
+  createdById   String    @map("created_by_id") @db.Uuid
+  createdBy     User      @relation("taskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([matterId])
+  @@index([dueOn])
+  @@index([assigneeId])
+  @@map("matter_task")
+}
+
+enum NotificationKind {
+  hearing_soon
+  deadline_soon
+  deadline_overdue
+  task_due
+  task_assigned
+}
+
+/// In-app reminder for one person. The stage key makes each reminder unique,
+/// so a worker that runs twice never sends it twice.
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  matterId  String           @map("matter_id") @db.Uuid
+  matter    Matter           @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  kind      NotificationKind
+  /// The hearing or task this is about.
+  subjectId String           @map("subject_id") @db.Uuid
+  /// For example "7d", "1d", "0d", "overdue", "assigned".
+  stage     String           @db.VarChar(16)
+  /// When the hearing starts or the task is due (for display and ordering).
+  dueAt     DateTime         @map("due_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(3)
+
+  @@unique([userId, subjectId, stage])
+  @@index([userId, readAt])
+  @@map("notification")
+}
+
+/// Periodic background tasks run by the worker (ADR 0008). A worker claims a
+/// due task with one atomic UPDATE, so two workers never run it at once.
+model ScheduledTask {
+  name            String    @id @db.VarChar(64)
+  intervalSeconds Int       @map("interval_seconds")
+  nextRunAt       DateTime  @map("next_run_at") @db.Timestamptz(3)
+  /// Set while a worker runs the task; another worker may take over after it.
+  leaseUntil      DateTime? @map("lease_until") @db.Timestamptz(3)
+  lastStartedAt   DateTime? @map("last_started_at") @db.Timestamptz(3)
+  lastFinishedAt  DateTime? @map("last_finished_at") @db.Timestamptz(3)
+  /// "ok" or "error". Error details go to the worker log, never here.
+  lastStatus      String?   @map("last_status") @db.VarChar(16)
+  lastSummary     String?   @map("last_summary") @db.VarChar(200)
+
+  @@map("scheduled_task")
 }

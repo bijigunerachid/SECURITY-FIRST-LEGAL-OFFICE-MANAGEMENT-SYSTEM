@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarDays,
   FolderOpen,
   Scale,
   ShieldAlert,
@@ -51,6 +52,12 @@ export function HomePage() {
       <div className="grid gap-4 sm:grid-cols-2">
         {user.role !== "admin" && (
           <>
+            <Tile
+              to="/agenda"
+              icon={CalendarDays}
+              title={t("nav.agenda")}
+              text={t("home.agendaCard")}
+            />
             <Tile
               to="/matters"
               icon={FolderOpen}

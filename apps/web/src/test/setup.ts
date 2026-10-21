@@ -1,3 +1,7 @@
+// Run every web test in a time zone far from the office's (Morocco), so a
+// date shown in the device's zone instead of office time is caught.
+process.env["TZ"] = "Asia/Tokyo";
+
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";

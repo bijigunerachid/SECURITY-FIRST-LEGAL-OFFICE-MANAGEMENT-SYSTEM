@@ -1,6 +1,8 @@
 import type { Config } from "../config/env.js";
 import type { Database } from "../lib/database.js";
 import { AuthService } from "./auth/auth-service.js";
+import { CalendarService } from "./calendar/calendar-service.js";
+import { NotificationService } from "./calendar/notifications.js";
 import { ClamdScanner, type MalwareScanner } from "./documents/clamd.js";
 import { DocumentService } from "./documents/document-service.js";
 import { DocumentStorage } from "./documents/storage.js";
@@ -28,6 +30,8 @@ export function createServices(
     storage,
     matters: new MatterService(db, auth.limiter),
     breakGlass: new BreakGlassService(db),
+    calendar: new CalendarService(db),
+    notifications: new NotificationService(db),
     documents: new DocumentService(db, storage, scanner, auth.limiter, {
       maxUploadBytes: config.documents.maxUploadBytes,
     }),

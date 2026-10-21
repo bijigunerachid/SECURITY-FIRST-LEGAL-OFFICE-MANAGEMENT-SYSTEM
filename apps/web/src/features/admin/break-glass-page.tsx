@@ -16,6 +16,7 @@ import {
   useInvalidateMatters,
 } from "@/features/matters/queries";
 import { isApiError, send } from "@/lib/api";
+import { ltr } from "@/lib/utils";
 
 /**
  * Break-glass access (decision D2): an administrator opens one matter,
@@ -138,7 +139,7 @@ export function BreakGlassPage() {
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <Link
                       to={`/matters/${grant.matterId}`}
-                      aria-label={t("breakGlass.open", { reference: grant.reference })}
+                      aria-label={t("breakGlass.open", { reference: ltr(grant.reference) })}
                       className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-surface-muted"
                     >
                       {t("conflicts.open")}
@@ -146,7 +147,7 @@ export function BreakGlassPage() {
                     <Button
                       variant="outline"
                       className="text-danger"
-                      aria-label={t("breakGlass.end", { reference: grant.reference })}
+                      aria-label={t("breakGlass.end", { reference: ltr(grant.reference) })}
                       disabled={end.isPending}
                       onClick={() => {
                         end.mutate(grant.id);

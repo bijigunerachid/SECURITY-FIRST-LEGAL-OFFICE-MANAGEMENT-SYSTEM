@@ -59,14 +59,14 @@ const UNSAFE_MULTI_LINE =
   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
 /* eslint-enable no-control-regex */
 
-const singleLine = (max: number) =>
+export const singleLine = (max: number) =>
   z
     .string()
     .trim()
     .max(max)
     .refine((v) => !UNSAFE_SINGLE_LINE.test(v), { message: "unsupported characters" });
 
-const multiLine = (max: number) =>
+export const multiLine = (max: number) =>
   z
     .string()
     .trim()
@@ -74,7 +74,7 @@ const multiLine = (max: number) =>
     .refine((v) => !UNSAFE_MULTI_LINE.test(v), { message: "unsupported characters" });
 
 /** Optional text: an empty string means "no value" and is stored as null. */
-const optional = <T extends z.ZodType<string>>(schema: T) =>
+export const optional = <T extends z.ZodType<string>>(schema: T) =>
   z
     .union([schema, z.null()])
     .transform((v) => (v === "" ? null : v))
@@ -174,6 +174,10 @@ export const matterPermissionsSchema = z.strictObject({
   writeDocuments: z.boolean(),
   /** Hide (delete) documents. Lawyers on the team only. */
   deleteDocuments: z.boolean(),
+  /** Add and edit hearings, deadlines and tasks. */
+  writeCalendar: z.boolean(),
+  /** Delete deadlines and tasks. Lawyers on the team only. */
+  deleteTasks: z.boolean(),
 });
 export type MatterPermissions = z.infer<typeof matterPermissionsSchema>;
 

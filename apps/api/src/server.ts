@@ -36,7 +36,6 @@ async function start(): Promise<void> {
   }
 
   const services = createServices(db, config);
-  const { auth } = services;
   try {
     // Document folders must exist and be writable before uploads are accepted.
     await services.storage.init();
@@ -46,16 +45,8 @@ async function start(): Promise<void> {
   }
   const app = createApp({ config, logger, database: createDatabaseProbe(db), ...services });
 
-  // Expired sessions and rate-limit windows are also removed when touched;
-  // this sweep catches the rest. (Moves to the background worker in Phase 6.)
-  const sweep = setInterval(() => {
-    Promise.all([auth.sessions.purgeExpired(), auth.limiter.purgeExpired()]).catch(
-      (error: unknown) => {
-        logger.error({ err: error }, "cleanup of expired sessions failed");
-      },
-    );
-  }, 15 * 60_000);
-  sweep.unref();
+  // Periodic cleanup (expired sessions, rate-limit windows, abandoned
+  // uploads) and reminders run in the worker process: src/worker.ts.
 
   const server = app.listen(config.port, config.host, () => {
     logger.info({ host: config.host, port: config.port, env: config.nodeEnv }, "API listening");

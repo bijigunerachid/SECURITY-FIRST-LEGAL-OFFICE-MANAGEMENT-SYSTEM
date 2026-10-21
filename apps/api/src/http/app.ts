@@ -3,6 +3,8 @@ import type { Config } from "../config/env.js";
 import type { DatabaseProbe } from "../lib/database.js";
 import type { Logger } from "../lib/logger.js";
 import type { AuthService } from "../modules/auth/auth-service.js";
+import type { CalendarService } from "../modules/calendar/calendar-service.js";
+import type { NotificationService } from "../modules/calendar/notifications.js";
 import type { DocumentService } from "../modules/documents/document-service.js";
 import type { BreakGlassService } from "../modules/matters/break-glass.js";
 import type { MatterService } from "../modules/matters/matter-service.js";
@@ -12,6 +14,12 @@ import { requestLogger } from "./middleware/request-logger.js";
 import { noStore, requireJsonBody, securityHeaders } from "./middleware/security.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { authRouter } from "./routes/auth.js";
+import {
+  agendaRouter,
+  hearingsRouter,
+  notificationsRouter,
+  tasksRouter,
+} from "./routes/calendar.js";
 import { documentsRouter } from "./routes/documents.js";
 import { healthRouter } from "./routes/health.js";
 import {
@@ -32,6 +40,8 @@ export interface AppDependencies {
   matters: MatterService;
   breakGlass: BreakGlassService;
   documents: DocumentService;
+  calendar: CalendarService;
+  notifications: NotificationService;
 }
 
 export function createApp({
@@ -42,6 +52,8 @@ export function createApp({
   matters,
   breakGlass,
   documents,
+  calendar,
+  notifications,
 }: AppDependencies): Express {
   const app = express();
 
@@ -70,9 +82,13 @@ export function createApp({
   api.use("/admin/users", adminUsersRouter(auth));
   api.use("/clients", clientsRouter(matters));
   api.use("/matters/:matterId/documents", documentsRouter(documents));
+  api.use("/matters/:matterId/hearings", hearingsRouter(calendar));
+  api.use("/matters/:matterId/tasks", tasksRouter(calendar));
   api.use("/matters", mattersRouter(matters));
   api.use("/conflicts", conflictsRouter(matters));
   api.use("/break-glass", breakGlassRouter(breakGlass));
+  api.use("/agenda", agendaRouter(calendar));
+  api.use("/notifications", notificationsRouter(notifications));
   app.use("/api", api);
 
   app.use(notFoundHandler);

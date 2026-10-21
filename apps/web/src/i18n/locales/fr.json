@@ -21,7 +21,9 @@
     "matters": "Dossiers",
     "clients": "Clients",
     "conflicts": "Conflits d'intérêts",
-    "breakGlass": "Accès d'urgence"
+    "breakGlass": "Accès d'urgence",
+    "agenda": "Agenda",
+    "notifications": "Rappels"
   },
   "roles": {
     "admin": "Administrateur",
@@ -56,7 +58,8 @@
     "mattersCard": "Consultez et mettez à jour les dossiers dont vous faites partie.",
     "clientsCard": "Retrouvez les clients de vos dossiers et leurs coordonnées.",
     "conflictsCard": "Vérifiez un nom avant d'accepter un nouveau dossier.",
-    "breakGlassCard": "Ouvrez un dossier en lecture seule en cas d'urgence. Chaque accès est enregistré."
+    "breakGlassCard": "Ouvrez un dossier en lecture seule en cas d'urgence. Chaque accès est enregistré.",
+    "agendaCard": "Vos audiences et échéances des prochaines semaines."
   },
   "login": {
     "title": "Connexion",
@@ -434,6 +437,101 @@
       "odt": "OpenDocument",
       "jpeg": "JPEG",
       "png": "PNG"
+    }
+  },
+  "hearingStatuses": {
+    "scheduled": "Prévue",
+    "held": "Tenue",
+    "postponed": "Renvoyée",
+    "cancelled": "Annulée"
+  },
+  "taskKinds": {
+    "deadline": "Échéance",
+    "task": "Tâche"
+  },
+  "hearings": {
+    "title": "Audiences",
+    "add": "Ajouter une audience",
+    "addTitle": "Nouvelle audience",
+    "editTitle": "Modifier l'audience",
+    "edit": "Modifier l'audience « {{title}} »",
+    "empty": "Aucune audience.",
+    "startsAt": "Date et heure (heure du Maroc)",
+    "titleLabel": "Objet",
+    "court": "Juridiction",
+    "room": "Salle",
+    "notes": "Notes",
+    "status": "Statut",
+    "outcome": "Résultat",
+    "outcomeHint": "À remplir une fois l'audience tenue, renvoyée ou annulée."
+  },
+  "tasks": {
+    "title": "Échéances et tâches",
+    "add": "Ajouter",
+    "addTitle": "Nouvelle échéance ou tâche",
+    "editTitle": "Modifier",
+    "edit": "Modifier « {{title}} »",
+    "kind": "Type",
+    "kindHint": "Une échéance (délai légal ou de procédure) rappelle toute l'équipe ; une tâche, la personne à qui elle est attribuée.",
+    "titleLabel": "Intitulé",
+    "dueOn": "Date",
+    "assignee": "Attribuée à",
+    "nobody": "Personne en particulier",
+    "notes": "Notes",
+    "empty": "Aucune échéance ni tâche.",
+    "markDone": "« {{title}} » est fait(e)",
+    "done": "Fait le {{date}} par {{name}}",
+    "due": "Pour le {{date}}",
+    "noDate": "Sans date",
+    "overdue": "En retard",
+    "assignedTo": "Attribuée à {{name}}",
+    "remove": "Supprimer « {{title}} »",
+    "removeTitle": "Supprimer",
+    "confirmRemove": "Supprimer « {{title}} » ? Ses rappels seront supprimés aussi."
+  },
+  "agenda": {
+    "title": "Agenda",
+    "description": "Audiences, échéances et tâches de vos dossiers.",
+    "range": "Du {{from}} au {{to}}",
+    "previous": "30 jours précédents",
+    "next": "30 jours suivants",
+    "overdue": "En retard",
+    "empty": "Rien de prévu sur cette période.",
+    "hearing": "Audience",
+    "matter": "Dossier {{reference}} · {{title}}"
+  },
+  "notifications": {
+    "title": "Rappels",
+    "description": "Vos rappels d'audiences, d'échéances et de tâches. Ils sont créés automatiquement.",
+    "empty": "Aucun rappel pour l'instant.",
+    "bell": "Rappels",
+    "bellUnread_one": "Rappels : {{count}} non lu",
+    "bellUnread_many": "Rappels : {{count}} non lus",
+    "bellUnread_other": "Rappels : {{count}} non lus",
+    "markAllRead": "Tout marquer comme lu",
+    "markRead": "Marquer comme lu",
+    "unread": "Non lu",
+    "due": "Le {{date}}",
+    "matter": "Dossier {{reference}}",
+    "messages": {
+      "hearing_soon": {
+        "7d": "Audience dans une semaine",
+        "1d": "Audience demain"
+      },
+      "deadline_soon": {
+        "7d": "Échéance dans une semaine",
+        "2d": "Échéance dans deux jours",
+        "0d": "Échéance aujourd'hui"
+      },
+      "deadline_overdue": {
+        "overdue": "Échéance dépassée"
+      },
+      "task_due": {
+        "due": "Tâche à faire"
+      },
+      "task_assigned": {
+        "assigned": "Tâche qui vous est attribuée"
+      }
     }
   }
 }
