@@ -354,9 +354,15 @@ Secret handling:
   least 14 days old, so hijacked or broken releases have time to be caught.
   The whole tree, including transitive dependencies, is resolved with
   `npm install --before=<date>`.
-- **Exceptions** to the cooldown need a written reason here. Current one:
-  Prisma 7.10.1 (released 2026-10-15), because 7.10.0 pulled in
-  `deepmerge-ts` and `mysql2` versions with High advisories.
+- **Exceptions** to the cooldown need a written reason here. Current ones:
+  - Prisma 7.10.1 (released 2026-10-15), because 7.10.0 pulled in
+    `deepmerge-ts` and `mysql2` versions with High advisories.
+  - Vitest 4.1.12 and its `@vitest/*` packages (released 2026-10-15, taken
+    2026-10-21), because advisories published on 2026-10-21
+    (GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp, moderate: code injection and
+    a Windows path bypass in `@vitest/mocker`) are fixed only there. A
+    development-only tool from the same maintainers; the lockfile change is
+    limited to the nine Vitest packages.
 - **One copy of each core package.** npm installs missing peer dependencies
   at their newest version; `overrides` in `package.json` pin `react`,
   `react-dom`, `vite` and `playwright-core` so only one copy exists.

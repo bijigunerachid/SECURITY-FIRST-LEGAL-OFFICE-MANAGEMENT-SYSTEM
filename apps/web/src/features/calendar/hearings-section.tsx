@@ -272,7 +272,9 @@ export function HearingsSection({ matter }: { matter: MatterDetail }) {
                     </Badge>
                   </p>
                   <p className="text-sm">
-                    <time dateTime={hearing.startsAt}>{office.dateTime(hearing.startsAt)}</time>
+                    <time dateTime={hearing.startsAt}>
+                      {office.dateTime(hearing.startsAtLocal)}
+                    </time>
                   </p>
                   {(hearing.court ?? hearing.room) && (
                     <p className="text-sm text-muted">

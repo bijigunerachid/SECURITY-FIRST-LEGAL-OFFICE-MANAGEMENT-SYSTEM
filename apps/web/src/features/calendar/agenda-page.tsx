@@ -155,7 +155,7 @@ export function AgendaPage() {
                         <div className="min-w-0 space-y-1">
                           <p className="font-medium">
                             <time dateTime={entry.item.startsAt}>
-                              {office.time(entry.item.startsAt)}
+                              {office.time(entry.item.startsAtLocal)}
                             </time>
                             {" · "}
                             {t("agenda.hearing")} — {entry.item.title}

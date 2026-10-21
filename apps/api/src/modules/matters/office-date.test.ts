@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tzdataIsCurrent } from "../../lib/tzdata.js";
+import { runtimeTzdata, tzdataIsCurrent } from "../../lib/tzdata.js";
 import { daysBetween, fromOfficeLocal, officeToday, toOfficeLocal } from "./office-date.js";
 
 describe("office time (Africa/Casablanca)", () => {
@@ -15,7 +15,7 @@ describe("office time (Africa/Casablanca)", () => {
     expect(toOfficeLocal(new Date("2025-03-10T09:30:00Z"))).toBe("2025-03-10T09:30");
   });
 
-  it.skipIf(!tzdataIsCurrent())(
+  it.skipIf(!tzdataIsCurrent(runtimeTzdata()))(
     "follows Morocco's move to permanent UTC+0 on 2026-09-20 (needs tzdata 2026c or later)",
     () => {
       expect(fromOfficeLocal("2026-09-19T09:30").toISOString()).toBe("2026-09-19T08:30:00.000Z");

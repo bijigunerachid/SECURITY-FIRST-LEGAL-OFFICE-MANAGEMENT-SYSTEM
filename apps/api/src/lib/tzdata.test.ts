@@ -14,5 +14,7 @@ describe("time-zone data check", () => {
     expect(tzdataCheck(true, "2024b")).toBe("refuse");
     expect(tzdataCheck(false, "2024b")).toBe("warn");
     expect(tzdataCheck(true, "2026c")).toBe("ok");
+    // An unknown version is never treated as current.
+    expect(tzdataCheck(true, undefined)).toBe("refuse");
   });
 });

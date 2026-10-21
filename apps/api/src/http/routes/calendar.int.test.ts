@@ -389,6 +389,8 @@ describe("reminders", () => {
       (await lead.browser.send("get", "/api/notifications")).body,
     );
     expect(mine.unread).toBe(1);
+    // The office day is computed by the server, not left to the browser.
+    expect(mine.notifications[0]?.dueDate).toBe(day(0));
     const theirs = await ctx.db.notification.findFirstOrThrow({
       where: { userId: assistant.user.id },
     });

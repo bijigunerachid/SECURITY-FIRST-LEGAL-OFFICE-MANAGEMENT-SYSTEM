@@ -4,6 +4,15 @@ import type { Database } from "../../lib/database.js";
 import { daysBetween, fromDbDate, officeToday, toOfficeLocal } from "../matters/office-date.js";
 import { visibleMattersWhere, type Actor } from "../policy/matter-policy.js";
 
+/**
+ * The office day a reminder is about. Hearings and assignments are instants;
+ * deadlines are calendar days stored at UTC midnight, which office time
+ * (UTC+0 or later) keeps on the same day.
+ */
+function officeDateOf(dueAt: Date): string {
+  return toOfficeLocal(dueAt).slice(0, 10);
+}
+
 /** How many reminders a person sees at once (newest first). */
 const LIST_LIMIT = 50;
 
@@ -33,6 +42,7 @@ export class NotificationService {
         kind: row.kind,
         stage: row.stage,
         dueAt: row.dueAt.toISOString(),
+        dueDate: officeDateOf(row.dueAt),
         createdAt: row.createdAt.toISOString(),
         read: row.readAt !== null,
         matter: row.matter,

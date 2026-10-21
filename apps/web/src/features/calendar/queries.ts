@@ -1,5 +1,4 @@
 import {
-  OFFICE_TIME_ZONE,
   agendaResponseSchema,
   hearingListResponseSchema,
   notificationListResponseSchema,
@@ -57,20 +56,29 @@ export function useInvalidateCalendar() {
     ]);
 }
 
-/** Hearing times are always shown in office time, whatever the device's time zone. */
+/**
+ * Hearing times are shown exactly as the server computed them in office time
+ * (`startsAtLocal`, "YYYY-MM-DDTHH:mm"). The browser only spells them out; it
+ * never converts time zones itself, so a device with an outdated time-zone
+ * database (for example one that still puts Morocco on UTC+1 after
+ * 2026-09-20) cannot shift a hearing. Formatting the wall-clock value as if
+ * it were UTC keeps its digits unchanged.
+ */
 export function useOfficeTime() {
   const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage === "ar" ? "ar-MA" : "fr-MA";
   const dateTime = new Intl.DateTimeFormat(locale, {
     dateStyle: "full",
     timeStyle: "short",
-    timeZone: OFFICE_TIME_ZONE,
+    timeZone: "UTC",
   });
-  const time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: OFFICE_TIME_ZONE });
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" });
+  const wallClock = (local: string) => new Date(`${local}:00Z`);
   const day = new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" });
   return {
-    dateTime: (iso: string) => dateTime.format(new Date(iso)),
-    time: (iso: string) => time.format(new Date(iso)),
+    /** An office wall-clock time ("YYYY-MM-DDTHH:mm"), written out in full. */
+    dateTime: (local: string) => dateTime.format(wallClock(local)),
+    time: (local: string) => time.format(wallClock(local)),
     /** A calendar day (YYYY-MM-DD), written out in full. */
     day: (isoDate: string) => day.format(new Date(`${isoDate}T00:00:00Z`)),
   };

@@ -123,6 +123,25 @@ describe("hearings on the matter page", () => {
     expect(within(section).getByText("Prévue")).toBeInTheDocument();
   });
 
+  it("shows the office time computed by the server, never a conversion made by the browser", async () => {
+    // A browser with outdated time-zone data would convert the instant
+    // differently from the server. The instant here deliberately disagrees
+    // with the server's office time: only the server's value may be shown.
+    setUp(
+      {},
+      {
+        [`GET ${BASE}/hearings`]: jsonResponse(200, {
+          hearings: [
+            { ...hearing, startsAt: "2026-11-03T05:00:00.000Z", startsAtLocal: "2026-11-03T09:30" },
+          ],
+        }),
+      },
+    );
+    renderRoute(`/matters/${MATTER_ID}`);
+    const section = await screen.findByRole("region", { name: "Audiences" });
+    expect(await within(section).findByText(/mardi 3 novembre 2026.*09:30/)).toBeInTheDocument();
+  });
+
   it("sends the office wall-clock time when adding a hearing", async () => {
     const { requests } = setUp(
       {},
@@ -272,6 +291,7 @@ describe("reminders", () => {
     kind: "deadline_soon",
     stage: "2d",
     dueAt: "2026-11-10T00:00:00.000Z",
+    dueDate: "2026-11-10",
     createdAt: "2026-11-08T07:00:00.000Z",
     read: false,
     matter: { id: MATTER_ID, reference: "2026-0007", title: "Succession Berrada" },

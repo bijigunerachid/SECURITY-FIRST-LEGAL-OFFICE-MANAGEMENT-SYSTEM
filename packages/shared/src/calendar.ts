@@ -152,6 +152,8 @@ export const notificationSchema = z.strictObject({
   kind: notificationKindSchema,
   stage: z.string(),
   dueAt: z.iso.datetime(),
+  /** The office calendar day of dueAt, computed by the server (YYYY-MM-DD). */
+  dueDate: calendarDateSchema,
   createdAt: z.iso.datetime(),
   read: z.boolean(),
   matter: matterRefSchema,

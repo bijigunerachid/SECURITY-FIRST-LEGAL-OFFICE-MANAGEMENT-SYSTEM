@@ -96,9 +96,7 @@ export function NotificationsPage() {
                   </p>
                   <p className="text-sm break-words">{n.subject}</p>
                   <p className="flex flex-wrap gap-x-3 text-sm text-muted">
-                    <span>
-                      {t("notifications.due", { date: format.date(n.dueAt.slice(0, 10)) })}
-                    </span>
+                    <span>{t("notifications.due", { date: format.date(n.dueDate) })}</span>
                     <Link
                       to={`/matters/${n.matter.id}`}
                       className="text-ink underline decoration-accent decoration-2 underline-offset-4"

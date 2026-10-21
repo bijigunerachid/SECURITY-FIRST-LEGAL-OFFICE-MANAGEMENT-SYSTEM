@@ -8,8 +8,17 @@
  */
 export const REQUIRED_TZDATA = "2026c";
 
-/** tzdata versions are a year and a letter ("2024b"), so they compare as strings. */
-export function tzdataIsCurrent(version: string | undefined = process.versions["tz"]): boolean {
+/** The tzdata version built into this Node.js runtime, for example "2026c". */
+export function runtimeTzdata(): string | undefined {
+  return process.versions["tz"];
+}
+
+/**
+ * tzdata versions are a year and a letter ("2024b"), so they compare as
+ * strings. The version is always passed explicitly (no default), so an
+ * unknown version is never silently replaced by the runtime's own.
+ */
+export function tzdataIsCurrent(version: string | undefined): boolean {
   return version !== undefined && /^\d{4}[a-z]$/.test(version) && version >= REQUIRED_TZDATA;
 }
 
@@ -19,7 +28,7 @@ export function tzdataIsCurrent(version: string | undefined = process.versions["
  */
 export function tzdataCheck(
   isProduction: boolean,
-  version: string | undefined = process.versions["tz"],
+  version: string | undefined,
 ): "ok" | "warn" | "refuse" {
   if (tzdataIsCurrent(version)) return "ok";
   return isProduction ? "refuse" : "warn";

@@ -330,7 +330,30 @@ settled 2025 dates, plus a test of the 2026 change that runs only where the
 time-zone data is current (in CI; skipped on this machine). After the fix, two local full end-to-end runs each had
 timeouts in tests the fix does not touch (the Phase 3 password-link test
 both times, once also the documents test): the open intermittent problem,
-not a new one. The API and the
+not a new one.
+
+**Second CI run (2026-10-21).** Two more problems, both fixed:
+
+- The hearing time on the matter page was converted by the browser, whose
+  own time-zone data may be older than the server's: Playwright's Chromium
+  showed a 09:30 hearing as 10:30. The web app now shows the office time the
+  server computes (`startsAtLocal`, and a server-computed day for
+  reminders) and never converts time zones itself; a test gives it an
+  instant that disagrees with the office time and fails if the browser's
+  conversion is shown.
+- A test of the time-zone check passed `undefined` to a parameter with a
+  default value, so it silently checked the runtime's own version instead.
+  The version is now always passed explicitly.
+
+Node.js 24.22.1 (tzdata 2026e) was then installed on this machine: the
+2026 time-zone test now runs locally too. `npm audit` reported two new
+Vitest advisories (published 2026-10-21); Vitest 4.1.12 was taken as a
+documented cooldown exception (see security.md, Supply chain). On Node.js
+24: lint, format, types and build pass; unit tests 286 passed, 1 skipped
+(Linux-only); integration 180 passed, 3 skipped (real ClamAV); audit 0;
+end-to-end 52 passed, 1 skipped in the second of two full runs (the first
+had one failure: the database readiness check answered "unavailable" once
+under load). The API and the
 worker now check their time-zone data at startup: in production they refuse
 to start with tzdata older than 2026c, elsewhere they warn. The check was
 proven by breaking it.
