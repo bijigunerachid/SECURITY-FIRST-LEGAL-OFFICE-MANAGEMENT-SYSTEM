@@ -2,6 +2,7 @@ import { ConfigError, loadConfig } from "./config/env.js";
 import { createApp } from "./http/app.js";
 import { createDatabase, createDatabaseProbe } from "./lib/database.js";
 import { createLogger } from "./lib/logger.js";
+import { AuthService } from "./modules/auth/auth-service.js";
 
 const SHUTDOWN_GRACE_MS = 10_000;
 /**
@@ -34,7 +35,19 @@ async function start(): Promise<void> {
     logger.error("database unreachable at startup; readiness will report unavailable");
   }
 
-  const app = createApp({ config, logger, database: createDatabaseProbe(db) });
+  const auth = new AuthService(db, config);
+  const app = createApp({ config, logger, database: createDatabaseProbe(db), auth });
+
+  // Expired sessions and rate-limit windows are also removed when touched;
+  // this sweep catches the rest. (Moves to the background worker in Phase 6.)
+  const sweep = setInterval(() => {
+    Promise.all([auth.sessions.purgeExpired(), auth.limiter.purgeExpired()]).catch(
+      (error: unknown) => {
+        logger.error({ err: error }, "cleanup of expired sessions failed");
+      },
+    );
+  }, 15 * 60_000);
+  sweep.unref();
 
   const server = app.listen(config.port, config.host, () => {
     logger.info({ host: config.host, port: config.port, env: config.nodeEnv }, "API listening");

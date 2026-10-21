@@ -48,6 +48,10 @@ describe("application database role", () => {
     await expectPermissionDenied('DELETE FROM "_prisma_migrations"');
   });
 
+  it("cannot delete user accounts (they are disabled instead)", async () => {
+    await expectPermissionDenied("DELETE FROM app_user");
+  });
+
   it("cannot read server files or run programs", async () => {
     await expectPermissionDenied("SELECT pg_read_file('/etc/passwd')");
     await expectPermissionDenied("COPY (SELECT 1) TO PROGRAM 'id'");

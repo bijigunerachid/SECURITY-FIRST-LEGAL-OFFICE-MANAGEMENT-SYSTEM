@@ -5,5 +5,5 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["src", "prisma.config.ts", "vitest.config.ts"]
+  "include": ["src", "scripts/*.ts", "prisma.config.ts", "vitest.config.ts"]
 }

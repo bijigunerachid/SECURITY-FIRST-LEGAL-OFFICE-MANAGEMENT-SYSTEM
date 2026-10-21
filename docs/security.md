@@ -1,8 +1,8 @@
 # Security design
 
-Status: **Phase 2 (foundation) implemented**. Controls built so far are
-marked _Verified_: the code exists, its test has been run, and a deliberate
-break of the control made that test fail (see the
+Status: **Phase 3 (identity and sessions) implemented**. Controls built so
+far are marked _Verified_: the code exists, its test has been run, and a
+deliberate break of the control made a test fail (see the
 [roadmap verification log](roadmap.md#verification-log)). Everything else is
 still _Planned_.
 
@@ -20,42 +20,48 @@ open a public issue, and never include real client data in a report.
 
 ## Identity and authentication
 
-| Control                | Design                                                                                                                                                                                                     | Phase | Status  |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------- |
-| No public registration | Accounts are created only by an administrator                                                                                                                                                              | 3     | Planned |
-| First administrator    | Created with a command-line tool run on the server, which asks for the password interactively. No web setup endpoint exists                                                                                | 3     | Planned |
-| Password hashing       | Argon2id. Starting point is the OWASP minimum (19 MiB memory, 2 iterations, 1 lane), raised and tuned to about 300 ms on the real server. Parameters are stored with each hash so they can be raised later | 3     | Planned |
-| Password policy        | 15 to 128 characters, any characters allowed, no forced composition rules (NIST SP 800-63B-4). Rejected if found in an offline list of common and breached passwords. No external service is contacted     | 3     | Planned |
-| Login errors           | One generic message for unknown account, wrong password and disabled account. Similar response time in each case                                                                                           | 3     | Planned |
-| Rate limiting          | Per IP and per account, progressive delays, temporary lockout. Stored in PostgreSQL so limits survive restarts                                                                                             | 3     | Planned |
-| MFA                    | TOTP, required for administrators (decision D4). Ten single-use recovery codes, stored hashed. TOTP secrets encrypted with AES-256-GCM using a key held outside the database                               | 3     | Planned |
-| Reauthentication       | Password (and MFA where enrolled) asked again for role changes, MFA reset, account disable, exports and break-glass access                                                                                 | 3     | Planned |
-| Password reset         | Admin-initiated (decision D3). Produces a single-use token valid 30 minutes, shown once and handed over in person. Only its SHA-256 hash is stored. Using it revokes all the user's sessions               | 3     | Planned |
+| Control                | Design                                                                                                                                                                                                                                                                                                                                                                                                            | Status   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| No public registration | Accounts are created only by an administrator (`POST /api/admin/users`) or by the server command-line tool                                                                                                                                                                                                                                                                                                        | Verified |
+| First administrator    | `npm run admin -w @lexora/api -- create` on the server. **Changed from the plan:** instead of typing a password into the terminal, it prints a single-use link (30 minutes) to set the password in the browser, so the password never passes through terminal history, and the normal password policy applies. Refuses when an active administrator exists. No web setup endpoint exists                          | Verified |
+| Administrator recovery | `npm run admin -w @lexora/api -- recover --email …` on the server: removes the second factor, signs the person out everywhere, issues a new link, and writes an audit event. Requires server access                                                                                                                                                                                                               | Verified |
+| Password hashing       | Argon2id, 64 MiB, 3 iterations, 1 lane by default (about 90 ms on the development machine; tune on the server in Phase 9). The API refuses settings below the OWASP minimum (19 MiB, 2 iterations) in every environment. Hashes made with weaker settings are upgraded at the next sign-in                                                                                                                        | Verified |
+| Password policy        | 15 to 128 characters (counted as Unicode code points), any characters, no composition rules (NIST SP 800-63B-4). Rejected if the lowercased password is in a list of 122,630 breached passwords of 15+ characters (offline, see `apps/api/data/README.md`), contains the user's name, e-mail or "lexora", or is trivially repetitive                                                                              | Verified |
+| Login errors           | One answer (`invalid_credentials`) for unknown account, wrong password, disabled account and account without a password yet. Unknown accounts are checked against a dummy Argon2id hash so the response time is similar                                                                                                                                                                                           | Verified |
+| Rate limiting          | Stored in PostgreSQL, one atomic statement per event. Login: 30 attempts per IP and 10 failures per account (keyed by a hash of the e-mail, existing or not) per 15 minutes; second factor: 5 failures per user; re-authentication: 5 failures per user; password links: 20 attempts per IP. Answers `429` with `Retry-After`. **Changed from the plan:** fixed windows rather than progressive delays            | Verified |
+| Second factor (TOTP)   | RFC 6238 (SHA-1, 6 digits, 30 s, ±1 step). Required for administrators: they can do nothing else until it is set up, and cannot turn it off. Optional for others. Each code is accepted once (the last used time step is stored and checked atomically). Secrets encrypted with AES-256-GCM, bound to the user by associated data, key outside the database (`MFA_ENCRYPTION_KEY`, with `_PREVIOUS` for rotation) | Verified |
+| Recovery codes         | Ten single-use codes (about 74 bits each), shown once, stored as SHA-256 hashes                                                                                                                                                                                                                                                                                                                                   | Verified |
+| Re-authentication      | Password, plus a code when a second factor is enrolled, valid 5 minutes. Required for every user-administration change, regenerating recovery codes, turning off the second factor, and setting one up from the security page                                                                                                                                                                                     | Verified |
+| Password links         | Admin-initiated (decision D3) or from the CLI. Single-use, 30 minutes, only the SHA-256 hash stored, older unused links invalidated when a new one is issued. The token travels in the URL fragment (`#token=`), which browsers never send to servers or in `Referer`, and the page removes it from the address bar. A rejected password does not use up the link. Using it signs the user out everywhere         | Verified |
+| User administration    | Administrators cannot change their own role or disable themselves. The last active administrator cannot be demoted or disabled, even when two administrators act at the same moment (the check and the change run in one transaction that locks the administrator rows). Role changes and disabling sign the user out immediately. Accounts are disabled, never deleted (the app role has no `DELETE` on users)   | Verified |
 
 ## Sessions
 
 See [ADR 0002](decisions/0002-server-side-sessions.md).
 
-| Control         | Design                                                                                                                                                                                            | Phase | Status                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------------------- |
-| Token           | 32 bytes from the operating system's secure random generator, sent only in a cookie                                                                                                               | 3     | Planned                    |
-| Storage         | Only a SHA-256 hash of the token is stored. A copy of the database contains no usable sessions                                                                                                    | 3     | Planned                    |
-| Cookie          | `__Host-lexora_session`, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, no `Domain`                                                                                                           | 3     | Planned                    |
-| Lifetime        | 30 minutes idle, 10 hours absolute (decision D7)                                                                                                                                                  | 3     | Planned                    |
-| Rotation        | New token at login, after MFA and after any privilege change. Prevents session fixation                                                                                                           | 3     | Planned                    |
-| Revocation      | Server-side. All sessions revoked on password change, reset, account disable or role change. "Sign out all devices" for each user                                                                 | 3     | Planned                    |
-| Browser storage | No tokens or confidential data in `localStorage`, `sessionStorage` or IndexedDB. Today `localStorage` holds only the language preference (`lexora.language`), and ESLint forbids `sessionStorage` | 2–8   | Implemented (Phase 2 part) |
+| Control         | Design                                                                                                                                                                                                                                         | Status   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Token           | 32 bytes from the operating system's secure random generator, sent only in a cookie                                                                                                                                                            | Verified |
+| Storage         | Only a SHA-256 hash of the token is stored. A copy of the database contains no usable sessions                                                                                                                                                 | Verified |
+| Cookie          | `__Host-lexora_session`, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, no `Domain`. Chromium accepts `Secure` cookies on `http://127.0.0.1` and `localhost`, so development uses the same cookie as production                            | Verified |
+| Lifetime        | 30 minutes idle, 10 hours absolute (decision D7, configurable within bounds). A session still waiting for its second factor lives 10 minutes. Expired sessions are deleted when used and swept every 15 minutes                                | Verified |
+| Rotation        | Signing in replaces any existing session; a new token is issued after the second factor, after enrolment and after a password change; the previous token stops working                                                                         | Verified |
+| Revocation      | Server-side. Password change signs out other sessions; a password link, disabling, a role change or a second-factor reset signs out all of them. "Sign out other devices" for each user                                                        | Verified |
+| Browser storage | No tokens or confidential data in `localStorage`, `sessionStorage` or IndexedDB. `localStorage` holds only the language preference; the CSRF token is kept in memory; ESLint forbids `sessionStorage`. Signing out clears all cached responses | Verified |
 
 ## CSRF
 
-The web app and API share one origin, and sessions use a cookie, so CSRF
-protection is required:
+The web app and API share one origin, and sessions use a cookie:
 
 - `SameSite=Strict` on the session cookie.
-- A random CSRF token tied to the session, sent in a request header on every
-  `POST`, `PUT`, `PATCH` and `DELETE`, compared in constant time.
-- Requests are rejected when the `Origin` header is not the application's
-  own origin, or when `Sec-Fetch-Site` is present and is not `same-origin`.
+- A random CSRF token per session, returned by `GET /api/auth/session`, kept
+  in memory by the page and sent in `X-CSRF-Token` on every `POST`, `PUT`,
+  `PATCH` and `DELETE`, compared in constant time. (Verified)
+- State-changing requests are rejected when the `Origin` header is not
+  `APP_ORIGIN`, or, without `Origin`, when `Sec-Fetch-Site` is present and
+  not `same-origin`. This also blocks login CSRF. (Verified)
+- Request bodies must be JSON (415 otherwise), which plain HTML forms on
+  other sites cannot send. (Verified)
 - No state changes on `GET`.
 
 ## Authorization
@@ -94,6 +100,12 @@ Rules:
 
 PostgreSQL row-level security is postponed. The reasons are in ADR 0003.
 
+Built in Phase 3 (verified): every API route except health checks and the
+sign-in routes requires a fully signed-in session, so anonymous callers get
+401 for real and unknown routes alike. User administration requires the
+`admin` role and answers 404 to everyone else, for every method. The
+matter-level policy layer arrives with matters in Phase 4.
+
 ## API and application security
 
 | Control              | Design                                                                                                                                                                                                                                          | Phase | Status                            |
@@ -124,7 +136,7 @@ PostgreSQL row-level security is postponed. The reasons are in ADR 0003.
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | Roles              | `lexora_owner` owns the databases and schema and is used only by migration commands. `lexora_app`, used by the API, has only `SELECT`, `INSERT`, `UPDATE`, `DELETE` on tables the owner creates. Neither is a superuser, can create roles or databases, or bypasses RLS. Verified: the app role cannot create tables, schemas, functions, roles or databases, read server files, run programs, read `_prisma_migrations`, or connect to databases it was not granted | 2     |
 | Time limits        | `lexora_app` has `statement_timeout = 30s` and `idle_in_transaction_session_timeout = 60s` (verified)                                                                                                                                                                                                                                                                                                                                                                | 2     |
-| Audit table rights | `lexora_app` has only `INSERT` and `SELECT` on `audit_event`                                                                                                                                                                                                                                                                                                                                                                                                         | 3     |
+| Audit table rights | `lexora_app` has only `INSERT` and `SELECT` on `audit_event`, and no `DELETE` on `app_user` (verified)                                                                                                                                                                                                                                                                                                                                                               | 3     |
 | Network            | Production: reachable only on the internal Docker network, never published (Phase 9). Development: published on `127.0.0.1` only, so tools on the workstation can reach it but other machines on the network cannot                                                                                                                                                                                                                                                  | 2, 9  |
 | Separation         | Separate databases and credentials for development, test, staging and production                                                                                                                                                                                                                                                                                                                                                                                     | 2, 9  |
 | Integrity          | Foreign keys, `CHECK` constraints, unique constraints, indexes; transactions for multi-step writes                                                                                                                                                                                                                                                                                                                                                                   | 2–7   |
@@ -156,14 +168,14 @@ See [ADR 0004](decisions/0004-document-storage.md).
 
 ## Encryption and secrets
 
-| What                           | Protected by                   | Key location                                                          | What it does not protect against                   |
-| ------------------------------ | ------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------- |
-| Network traffic                | TLS at the Caddy proxy, HSTS   | Certificate key on the server                                         | A compromised server or proxy                      |
-| Server disks                   | Full-disk encryption (LUKS)    | Passphrase or TPM unlock, decided at installation                     | Anyone with access to the running server           |
-| MFA secrets, recovery material | AES-256-GCM in the application | Docker secret file outside the database and the backups               | A compromised running API                          |
-| Session and reset tokens       | Stored only as SHA-256 hashes  | —                                                                     | Theft of a token from a user's browser             |
-| Passwords                      | Argon2id                       | —                                                                     | Weak passwords allowed by an outdated blocklist    |
-| Backups                        | restic encryption              | Kept apart from the media (see [ADR 0007](decisions/0007-backups.md)) | Loss of the key, which makes backups unrecoverable |
+| What                     | Protected by                                      | Key location                                                                                                                                                   | What it does not protect against                   |
+| ------------------------ | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Network traffic          | TLS at the Caddy proxy, HSTS                      | Certificate key on the server                                                                                                                                  | A compromised server or proxy                      |
+| Server disks             | Full-disk encryption (LUKS)                       | Passphrase or TPM unlock, decided at installation                                                                                                              | Anyone with access to the running server           |
+| TOTP secrets             | AES-256-GCM in the application, bound to the user | `MFA_ENCRYPTION_KEY` (env or Docker secret file), outside the database and the backups; keep a copy offline, or every second factor must be reset after a loss | A compromised running API                          |
+| Session and reset tokens | Stored only as SHA-256 hashes                     | —                                                                                                                                                              | Theft of a token from a user's browser             |
+| Passwords                | Argon2id                                          | —                                                                                                                                                              | Weak passwords allowed by an outdated blocklist    |
+| Backups                  | restic encryption                                 | Kept apart from the media (see [ADR 0007](decisions/0007-backups.md))                                                                                          | Loss of the key, which makes backups unrecoverable |
 
 Other database fields are **not** encrypted by the application. This is a
 deliberate choice: field encryption would block searching and sorting and
@@ -196,9 +208,17 @@ Secret handling:
 - Each event stores: time, actor ID, action, target type and ID, outcome,
   correlation ID, and the client IP. Never passwords, tokens, secrets or
   document contents.
-- The application role can only add and read audit rows. Each row includes a
-  hash of the previous row, so changes can be detected. The latest hash is
-  copied with each backup.
+- The application role can only add and read audit rows (no `UPDATE`,
+  `DELETE` or `TRUNCATE`), and a trigger refuses updates and deletes from any
+  role. Each row includes a hash of the previous row and of its own content
+  (keys sorted, so PostgreSQL's JSON reordering cannot break it); writers
+  take a lock so concurrent events chain correctly. `verifyAuditChain`
+  detects a changed or deleted row. The latest hash will be copied with each
+  backup (Phase 9). (Verified)
+- Recorded since Phase 3: sign-in success and failure (with the account only
+  if it exists, never the typed e-mail), second-factor checks, enrolment,
+  recovery-code regeneration, re-authentication, password change and set,
+  sign-out, "sign out other devices", and every user-administration action.
 - Only administrators can read the audit log, through the audit viewer.
 - This makes the log **tamper-evident** against the application, not
   tamper-proof against someone with database owner or root access.

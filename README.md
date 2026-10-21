@@ -4,8 +4,9 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: foundation (Phase 2).** The hardened skeleton runs, but there are
-> no users, clients or matters yet. Do not enter real client data into any
+> **Status: identity and sessions (Phase 3).** Accounts, sign-in with a
+> second factor, and user administration work; there are no clients or
+> matters yet. Do not enter real client data into any
 > version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
@@ -52,11 +53,26 @@ npm run dev:api            # API on http://127.0.0.1:3000
 npm run dev:web            # web app on http://127.0.0.1:5173
 ```
 
-Open http://127.0.0.1:5173 to see the system status page.
+Create your first administrator account (on a server, this is the only way;
+there is no web setup page):
+
+```sh
+npm run admin -w @lexora/api -- create --email you@cabinet.ma --name "Your Name"
+```
+
+It prints a single-use link, valid 30 minutes. Open it to choose a password,
+then sign in at http://127.0.0.1:5173: you will be asked to set up an
+authenticator app first, and to keep your recovery codes. An administrator
+who loses their phone and recovery codes is recovered on the server with
+`npm run admin -w @lexora/api -- recover --email you@cabinet.ma`.
 
 `npm run setup:dev` never overwrites or prints a secret. Everything it
 creates (`secrets/*`, `apps/api/.env`, `apps/api/.env.test`) is ignored by
-Git.
+Git. Run it again after pulling a new version: it adds any new settings to
+your existing env files without changing the old ones.
+
+End-to-end tests create their own synthetic accounts in the test database
+(`apps/api/scripts/e2e-accounts.json`, via `npm run seed:e2e -w @lexora/api`).
 
 ## Checks
 
@@ -74,7 +90,10 @@ asking for a merge:
 | `npm run test:e2e`         | Playwright on the production build, desktop (1366 px) and phone (390 px) |
 | `npm run audit:deps`       | `npm audit` for known vulnerabilities                                    |
 
-`npm run test:e2e` needs `npm run build` first. CI also runs gitleaks over
+`npm run test:e2e` needs `npm run build` first. If ports 3000 or 4173 are
+used by other software, move the test servers, for example
+`E2E_API_PORT=3310 E2E_WEB_PORT=4310 npm run test:e2e` (in PowerShell, set
+`$env:E2E_API_PORT` and `$env:E2E_WEB_PORT` first). CI also runs gitleaks over
 the whole Git history and a Trivy scan (see `.github/workflows/ci.yml`).
 
 ## Database changes

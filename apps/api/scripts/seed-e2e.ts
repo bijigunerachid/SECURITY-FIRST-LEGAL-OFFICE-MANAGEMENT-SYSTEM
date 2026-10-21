@@ -1,0 +1,61 @@
+// Resets the TEST database and creates the synthetic end-to-end accounts in
+// e2e-accounts.json. Refuses to touch any database whose name does not end
+// in "_test".
+//
+//   npm run seed:e2e -w @lexora/api
+import { readFileSync } from "node:fs";
+import pg from "pg";
+import { loadConfig } from "../src/config/env.js";
+import { createDatabase } from "../src/lib/database.js";
+import { hashPassword } from "../src/modules/auth/passwords.js";
+import { encryptTotpSecret } from "../src/modules/auth/totp.js";
+
+interface Accounts {
+  password: string;
+  totpSecret: string;
+  accounts: Record<
+    string,
+    { email: string; name: string; role: "admin" | "lawyer" | "assistant"; mfa: boolean }
+  >;
+}
+
+const data = JSON.parse(
+  readFileSync(new URL("./e2e-accounts.json", import.meta.url), "utf8"),
+) as Accounts;
+const config = loadConfig();
+const ownerUrl = process.env["MIGRATION_DATABASE_URL"] ?? "";
+
+for (const url of [config.databaseUrl, ownerUrl]) {
+  if (!new URL(url).pathname.endsWith("_test")) {
+    console.error("seed-e2e: refusing to run against a database whose name does not end in _test.");
+    process.exit(1);
+  }
+}
+
+const owner = new pg.Client({ connectionString: ownerUrl });
+await owner.connect();
+await owner.query(
+  'TRUNCATE "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
+);
+await owner.end();
+
+const db = createDatabase(config);
+const passwordHash = await hashPassword(data.password, config.argon2);
+for (const account of Object.values(data.accounts)) {
+  const user = await db.user.create({
+    data: { email: account.email, displayName: account.name, role: account.role, passwordHash },
+  });
+  if (account.mfa) {
+    const sealed = encryptTotpSecret(data.totpSecret, user.id, config.mfaEncryptionKey);
+    await db.totpFactor.create({
+      data: {
+        userId: user.id,
+        secretCiphertext: new Uint8Array(sealed.ciphertext),
+        keyId: sealed.keyId,
+        confirmedAt: new Date(),
+      },
+    });
+  }
+}
+await db.$disconnect();
+console.error(`seed-e2e: created ${Object.keys(data.accounts).length} test accounts.`);

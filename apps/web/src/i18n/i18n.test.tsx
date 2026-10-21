@@ -1,7 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderRoute } from "@/test/render";
+import { mockApi, renderRoute, signedOut } from "@/test/render";
 import ar from "./locales/ar.json";
 import fr from "./locales/fr.json";
 import { createI18n, directionOf } from "./index";
@@ -49,13 +49,10 @@ describe("document language and direction", () => {
   });
 
   it("switches lang and dir and remembers the choice", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(jsonResponse(200, { status: "ok", checks: { database: "ok" } })),
-    );
-    renderRoute("/", "fr");
+    mockApi({ "GET /api/auth/session": signedOut() });
+    renderRoute("/login", "fr");
 
-    const arabic = screen.getByRole("button", { name: "العربية" });
+    const arabic = await screen.findByRole("button", { name: "العربية" });
     expect(arabic).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(arabic);
 

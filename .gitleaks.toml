@@ -17,3 +17,12 @@ keywords = ["postgres"]
   [[rules.allowlists]]
   regexTarget = "secret"
   regexes = ['''^<[A-Za-z-]+>$''', '''test-only''']
+
+# The synthetic authenticator secret used only by end-to-end tests (it seeds
+# the *_test database; see apps/api/scripts/e2e-accounts.json). Only this exact
+# value is allowed, so any other secret, in that file or elsewhere, is still
+# reported. (A path-AND-value allowlist was tried first; gitleaks applied it to
+# the whole file, so it was replaced by this narrower rule.)
+[[allowlists]]
+description = "Synthetic e2e TOTP secret (test database only)"
+regexes = ['''^KRSXG5CPNZWHSRKFGJSVMMZVGIZDGNBV$''']

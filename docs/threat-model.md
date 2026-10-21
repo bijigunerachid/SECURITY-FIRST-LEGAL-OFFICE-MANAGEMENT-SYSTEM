@@ -115,3 +115,29 @@ production.
 | F11 | Readiness could falsely report the database as down for the first requests after an API restart                                                                                                                                                                                                 | Low      | Verified              | Fixed: the API connects to the database before accepting requests                                                                                     |
 | F12 | The baseline migration failed on Prisma's shadow database, so no new migration could be created                                                                                                                                                                                                 | Medium   | Verified              | Fixed: the migration checks that the table exists; verified with `migrate dev --create-only`                                                          |
 | F13 | On Linux (the CI runner), the development database started without the Lexora roles: secret files were 0600 and unreadable by the container's `postgres` user, the init script failed, the restarted container skipped initialisation, and the `pg_isready` health check still reported healthy | High     | Verified (reproduced) | Fixed: secrets 0644 in a 0700 folder; the init script fails with a clear message; the health check requires both roles and the test database over TCP |
+
+## Findings from Phase 3
+
+| ID  | Finding                                                                                                                                  | Severity | Status                                      | Resolution                                                                                                                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| F14 | Two administrators demoting or disabling each other at the same moment could both succeed, leaving the office with no administrator      | High     | Verified (reproduced by a concurrency test) | Fixed: the check and the change run in one transaction that locks the active administrator rows and re-checks that the actor is still an administrator |
+| F15 | All dialogs shared one title id, so with two dialogs open the second was announced with the first one's title                            | Low      | Verified                                    | Fixed: each dialog has a unique id                                                                                                                     |
+| F16 | A gitleaks allowlist meant to match "this file AND this value" silenced the whole file                                                   | Medium   | Verified                                    | Fixed: only the exact synthetic test value is allowed; proven with other values in the same file                                                       |
+| F17 | In development, React's double effects could start authenticator enrolment twice, so the QR code shown might not match the stored secret | Low      | Verified (by review)                        | Fixed: one request per enrolment                                                                                                                       |
+
+### Threat mitigation status after Phase 3
+
+Verified by tests (see the [verification log](roadmap.md#verification-log)):
+T2 brute force and credential stuffing (Argon2id, breached-password list,
+rate limits, second factor), T3 account enumeration (one answer, similar
+timing, limiter keyed by hashed e-mail for unknown accounts too), T4 session
+theft, fixation and reuse, T7 mass assignment and privilege escalation for
+user administration, T9 administrator takeover (required second factor,
+re-authentication, no self-demotion, server-only recovery), T13 CSRF
+(including login CSRF), T16 unattended device (idle timeout, sign out other
+devices), and T23 audit log tampering (append-only role, trigger, hash
+chain).
+
+Still open: T5 and T6 (IDOR and cross-matter disclosure) until matters and
+the policy layer exist (Phase 4); T8 insider misuse until audit viewing and
+alerts (Phase 8).

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 2 (foundation) built.** The skeleton described under
+Status: **Phase 3 (identity and sessions) built.** What is described under
 "[What exists now](#what-exists-now)" is implemented and tested; the rest of
 this document is the target design. Each phase updates it to describe what
 was actually built.
@@ -81,21 +81,27 @@ Folders marked _(later)_ arrive with the phases that need them.
 apps/
   api/                  Express API (and, later, the background worker)
     prisma/             schema and reviewed migrations
-    scripts/            prisma-with-env.mjs: runs Prisma with one explicit env file
+    data/               offline breached-password list (see its README)
+    scripts/            prisma-with-env.mjs (Prisma with one explicit env file),
+                        seed-e2e.ts and e2e-accounts.json (synthetic test accounts)
     src/
+      cli/              administrator tool: create the first admin, recover access
       config/           settings loading and validation (env.ts)
-      http/             app setup (app.ts), middleware, error handling, routes
-      lib/              database client and probe, logger
+      http/             app setup (app.ts), middleware (auth, CSRF, errors), routes
+      lib/              database client and probe, logger, crypto helpers
+      modules/auth/     passwords, sessions, TOTP, recovery codes, rate limits,
+                        AuthService (sign-in, second factor, user administration)
+      modules/audit/    hash-chained audit log
       generated/        Prisma client (generated, not committed)
-      test/             test helpers and the integration-test guard
-      modules/          (later) one folder per business area
+      test/             test helpers, integration context, integration-test guard
       policies/         (later) authorization rules and query scoping
   web/                  React application
     e2e/                Playwright end-to-end tests
     src/
       app/              router and providers
       components/       layout and UI components (shadcn/ui pattern)
-      features/         one folder per screen or feature (status/)
+      features/         one folder per area: auth/ (sign-in, second factor, guards,
+                        re-authentication), security/, admin/, home/, status/
       i18n/             French and Arabic translations, direction handling
       lib/              API client, helpers
       routes/           not-found and error pages
@@ -128,6 +134,24 @@ Phase 2 delivers a hardened skeleton with no business data:
   with automatic right-to-left layout. Fonts are served from our own origin.
 - **Shared** (`packages/shared`): the health response and error response
   schemas used by both sides.
+
+Phase 3 adds identity and sessions:
+
+- **Data**: tables `app_user`, `session`, `totp_factor`, `recovery_code`,
+  `password_token`, `rate_limit_bucket` and `audit_event` (migration
+  `identity_and_audit`, with CHECK constraints, an append-only trigger on the
+  audit log, and no `DELETE` on users for the app role).
+- **API**: `/api/auth/*` (session, login, logout, second factor, enrolment,
+  recovery codes, re-authentication, password change and set, sign out
+  other devices) and `/api/admin/users/*` (list, create, update, password
+  link, second-factor reset, sign out). Middleware order: security headers,
+  body checks, health routes, session loading, Origin/CSRF checks, sign-in
+  routes, then "fully signed-in session required" for everything else.
+- **Web**: sign-in, code, set-password and mandatory second-factor screens,
+  a home page, the security page, user administration, and a
+  re-authentication dialog that appears whenever the server asks for it and
+  then retries the action.
+- **CLI**: `npm run admin -w @lexora/api -- create | recover`.
 
 How workspaces find `@lexora/shared`: in development, tests and type
 checking, the custom export condition `@lexora/source` (and aliases in the

@@ -29,8 +29,8 @@ Related documents:
 | ------------------------------------------ | --------------------- | ----------------- |
 | 0. Repository audit                        | —                     | Done (2026-10-18) |
 | 1. Security plan and repository basics     | `docs/security-plan`  | Done (2026-10-18) |
-| 2. Foundation                              | `feature/foundation`  | In review         |
-| 3. Identity and sessions                   | `feature/auth`        | Not started       |
+| 2. Foundation                              | `feature/foundation`  | Done (2026-10-18) |
+| 3. Identity and sessions                   | `feature/auth`        | In review         |
 | 4. Authorization, clients and matters      | `feature/matters`     | Not started       |
 | 5. Documents                               | `feature/documents`   | Not started       |
 | 6. Hearings, deadlines and background jobs | `feature/calendar`    | Not started       |
@@ -106,6 +106,17 @@ Objective: a hardened, tested skeleton with no business data.
   recovery codes. Reauthentication for sensitive operations.
 - Admin-initiated password reset with a single-use, expiring token.
 - First audit-log events (authentication, sessions, account changes).
+
+Built as planned, with these changes (reasons in [security.md](security.md#identity-and-authentication)):
+
+- The first-administrator command prints a single-use set-password link
+  instead of asking for a password in the terminal; a `recover` command was
+  added for locked-out administrators.
+- Rate limits use fixed windows rather than progressive delays.
+- Break-glass access to matter content (decision D2) is deferred to Phase 4,
+  when matters exist.
+- The web app gained sign-in, second-factor, set-password, security and
+  user-administration screens in French and Arabic.
 
 ### Phase 4 — Authorization, clients and matters
 
@@ -189,6 +200,84 @@ recommended default is used and noted as provisional in the design documents.
 | D9  | GitHub repository visibility            | Private                                                                              |
 
 ## Verification log
+
+### Phase 3 — Identity and sessions
+
+Checks run on 2026-10-18 on Windows 11 with Node.js 22.14.0 and Docker
+Desktop (PostgreSQL 18.6). CI has not run this branch yet.
+
+| Check                                       | Result                                                                                                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run lint` (ESLint, 0 warnings)         | Pass                                                                                                                                                                                 |
+| `npm run format:check`                      | Pass                                                                                                                                                                                 |
+| `npm run typecheck` (3 workspaces)          | Pass                                                                                                                                                                                 |
+| Unit tests                                  | 128 passed (shared 3, API 89, web 36)                                                                                                                                                |
+| Integration tests (real PostgreSQL)         | 67 passed in 7 files                                                                                                                                                                 |
+| `npm run build`                             | Pass                                                                                                                                                                                 |
+| End-to-end (Playwright, 1366 px and 390 px) | 30 passed, 1 skipped by design; 4 consecutive full runs all passed                                                                                                                   |
+| Accessibility (axe, WCAG A/AA)              | 0 violations on sign-in, second-factor set-up and recovery codes, security, users, re-authentication dialog and status pages, in French and Arabic                                   |
+| `npm audit`                                 | 0 vulnerabilities                                                                                                                                                                    |
+| Trivy 0.75.0                                | 0 findings (development dependencies included)                                                                                                                                       |
+| gitleaks 8.30.1 (146 files to commit)       | No leaks, after allowing only the exact synthetic e2e authenticator secret; a different secret in that same file is still reported, and the real development `.env` gives 4 findings |
+| Screenshots                                 | Reviewed at both widths in French and Arabic; two layout fixes (below)                                                                                                               |
+
+Controls proven by breaking them (each made at least one test fail, then the
+code was restored byte for byte): disabled accounts signing in; no dummy
+hash for unknown accounts (timing); breached-password list skipped; CSRF
+token not checked; Origin not checked; authenticator codes replayable; admin
+routes open to every role; user creation without re-authentication; idle
+timeout ignored; sessions kept after a role change or disable; login rate
+limit off; unknown fields accepted (mass assignment); password links
+reusable; old token kept after rotation (session fixation); the "last
+administrator" lock removed (race); admin pages shown to non-admins in the
+web app; CSRF header not sent by the web app; password-link token left in
+the address bar.
+
+Problems found and fixed during this phase:
+
+- **Race leaving no administrator** (threat model F14). Two administrators
+  demoting each other at the same moment could both succeed. Found while
+  reviewing a test that could not reach the rule; fixed with a transaction
+  that locks the administrator rows; a concurrency test fails without the
+  lock.
+- **Weak test (session fixation).** Keeping the old token after the second
+  factor did not fail the sign-in tests; an assertion was added.
+- **Shared dialog title id** (F15). With two dialogs open, screen readers
+  would announce the wrong title. Each dialog now has a unique id.
+- **Secret-scanner allowlist too broad** (F16). A "file and value"
+  allowlist silenced the whole file; it was replaced by an exact-value rule
+  and proven both ways.
+- **Duplicate authenticator set-up request in development** (F17). React
+  development mode runs effects twice, which could show a QR code that no
+  longer matched the stored secret; one request is now guaranteed.
+- **Layout.** On phones the "add user" button touched the list; French
+  labels lacked the space before the colon (now part of the translations).
+- Three test inputs were wrong (passwords containing the user's own name,
+  correctly rejected by the policy, and a CHECK constraint correctly refusing
+  an impossible session); the tests were fixed, not the code.
+
+**First CI run (2026-10-21).** One accessibility test failed on the phone
+run in CI only: a colour-contrast violation right after switching language.
+Reproduced locally by freezing the language buttons halfway through their
+150 ms colour transition (contrast 2.5 to 3.4:1); both final states pass.
+The scan ran while the transition was still in progress, so the
+accessibility helper now waits until finite animations have finished. The
+failing test then passed 20 times out of 20, and the full suite passed.
+End-to-end ports can now be moved with `E2E_API_PORT` and `E2E_WEB_PORT`
+when 3000 or 4173 are taken by other software (defaults unchanged).
+
+**Second CI run (2026-10-21).** `npm audit` and Trivy failed on newly
+published advisories for Vite 8.3.2 (the bundled `launch-editor`: command
+injection and argument escaping on Windows, GHSA-698v-4r3x-3vcv,
+GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm). The code is part of Vite's
+development server, which never runs in production, but the alert is fixed
+rather than ignored. Vite is now pinned to 8.3.3 (released 2026-10-06, so
+within the 14-day cooldown; 8.3.4 and later are too new). Only Vite changed
+in the lockfile. Afterwards `npm audit` reported 0 vulnerabilities and every
+check was run again.
+
+Not verified in this phase: a passing CI run of this branch after the fix;
+Node.js 24 locally.
 
 ### Phase 2 — Foundation
 

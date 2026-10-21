@@ -1,10 +1,86 @@
-import { Scale } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { LogOut, Scale } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, Outlet } from "react-router";
+import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Button } from "@/components/ui/button";
+import { useForgetEverything, useSession } from "@/features/auth/session";
+import { send } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+function MainNav() {
+  const { t } = useTranslation();
+  const user = useSession().data?.user;
+  const links = [
+    { to: "/", label: t("nav.home"), end: true },
+    { to: "/security", label: t("nav.security"), end: false },
+    ...(user?.role === "admin" ? [{ to: "/admin/users", label: t("nav.users"), end: false }] : []),
+    { to: "/status", label: t("nav.status"), end: false },
+  ];
+  return (
+    <nav aria-label={t("nav.label")} className="border-t border-border">
+      <ul className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-2 sm:px-4">
+        {links.map((link) => (
+          <li key={link.to}>
+            <NavLink
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) =>
+                cn(
+                  "inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap",
+                  isActive
+                    ? "border-accent text-ink"
+                    : "border-transparent text-muted hover:text-ink",
+                )
+              }
+            >
+              {link.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+function AccountMenu() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const forgetEverything = useForgetEverything();
+  const user = useSession().data?.user;
+  const logout = useMutation({
+    mutationFn: () => send("POST", "/api/auth/logout"),
+    onSettled: async () => {
+      forgetEverything();
+      await navigate("/login", { replace: true, state: { signedOut: true } });
+    },
+  });
+  if (!user) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="hidden text-sm text-muted md:inline"
+        aria-label={t("nav.account", { name: user.displayName })}
+      >
+        {user.displayName} · {t(`roles.${user.role}`)}
+      </span>
+      <Button
+        variant="ghost"
+        aria-label={t("nav.signOut")}
+        onClick={() => {
+          logout.mutate();
+        }}
+      >
+        <LogOut className="size-4 rtl:rotate-180" aria-hidden="true" />
+        <span className="hidden sm:inline">{t("nav.signOut")}</span>
+      </Button>
+    </div>
+  );
+}
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { t } = useTranslation();
+  const signedIn = useSession().data?.state === "active";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -16,10 +92,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       </a>
 
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-3 rounded-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link to="/" className="flex min-w-0 items-center gap-3 rounded-md">
             <span
-              className="flex size-10 items-center justify-center rounded-lg bg-brand text-brand-ink"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-ink"
               aria-hidden="true"
             >
               <Scale className="size-5" strokeWidth={1.75} />
@@ -30,8 +106,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               <span className="hidden text-xs text-muted sm:block">{t("app.tagline")}</span>
             </span>
           </Link>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            {signedIn && <AccountMenu />}
+            <LanguageSwitcher />
+          </div>
         </div>
+        {signedIn && <MainNav />}
       </header>
 
       <main
