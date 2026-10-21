@@ -8,9 +8,14 @@ const validUrl = `postgresql://lexora_app:${APP_PASSWORD}@db:5432/lexora`;
 const TEST_KEY = Buffer.alloc(32, 1).toString("base64");
 
 /** Required settings other than the database. */
+/** An absolute path on the platform running the tests. */
+const STORAGE_DIR =
+  process.platform === "win32" ? String.raw`C:\lexora\documents` : "/var/lib/lexora/documents";
+
 const required = {
   APP_ORIGIN: "http://127.0.0.1:5173",
   MFA_ENCRYPTION_KEY: TEST_KEY,
+  DOCUMENT_STORAGE_DIR: STORAGE_DIR,
 };
 const productionRequired = { ...required, APP_ORIGIN: "https://lexora.office.example" };
 
@@ -50,7 +55,21 @@ describe("loadConfig", () => {
       sessionIdleMs: 30 * 60_000,
       sessionAbsoluteMs: 10 * 3_600_000,
       argon2: { memoryKib: 65_536, iterations: 3 },
+      documents: { storageDir: STORAGE_DIR, maxUploadBytes: 25 * 1024 * 1024 },
+      clamav: { host: "127.0.0.1", port: 3310, timeoutMs: 60_000 },
     });
+  });
+
+  it("refuses a relative document folder and out-of-range upload limits", () => {
+    expect(problemsFor({ ...base, DOCUMENT_STORAGE_DIR: "storage/documents" })).toEqual([
+      "DOCUMENT_STORAGE_DIR: must be an absolute path",
+    ]);
+    expect(problemsFor({ ...base, UPLOAD_MAX_MB: "0" })).toEqual([
+      expect.stringMatching(/^UPLOAD_MAX_MB: /),
+    ]);
+    expect(problemsFor({ ...base, UPLOAD_MAX_MB: "500" })).toEqual([
+      expect.stringMatching(/^UPLOAD_MAX_MB: /),
+    ]);
   });
 
   it("reports every missing required setting", () => {
@@ -180,6 +199,7 @@ describe("loadConfig", () => {
           NODE_ENV: "development",
           DATABASE_URL: validUrl,
           APP_ORIGIN: required.APP_ORIGIN,
+          DOCUMENT_STORAGE_DIR: required.DOCUMENT_STORAGE_DIR,
           MFA_ENCRYPTION_KEY_FILE: "/run/secrets/mfa",
         },
         () => `${TEST_KEY}

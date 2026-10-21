@@ -11,11 +11,12 @@ import { defineConfig, devices } from "@playwright/test";
  * in (which would also run into the real per-IP login rate limit).
  */
 /**
- * Ports can be moved when 3000/4173 are taken by something else on this
- * machine: E2E_API_PORT and E2E_WEB_PORT. CI uses the defaults.
+ * Ports can be moved when they are taken by something else on this machine:
+ * E2E_API_PORT, E2E_WEB_PORT and E2E_SCANNER_PORT. CI uses the defaults.
  */
 const apiPort = process.env["E2E_API_PORT"] ?? "3000";
 const webPort = process.env["E2E_WEB_PORT"] ?? "4173";
+const scannerPort = process.env["E2E_SCANNER_PORT"] ?? "53311";
 const webOrigin = `http://127.0.0.1:${webPort}`;
 
 export default defineConfig({
@@ -54,9 +55,19 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // Fake malware scanner (clamd protocol, flags only a test marker):
+      // apps/api/src/test/fake-clamd.ts. CI also tests the real ClamAV.
+      command: "npm run fake-clamd:e2e -w @lexora/api",
+      env: { CLAMAV_PORT: scannerPort },
+      port: Number(scannerPort),
+      cwd: "../..",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       command: "npm run start:e2e -w @lexora/api",
       // Variables already set take precedence over .env.test.
-      env: { PORT: apiPort, APP_ORIGIN: webOrigin },
+      env: { PORT: apiPort, APP_ORIGIN: webOrigin, CLAMAV_PORT: scannerPort },
       // Wait until the API reports ready (database reachable), as a load
       // balancer or Docker health check would.
       url: `http://127.0.0.1:${apiPort}/api/health/ready`,

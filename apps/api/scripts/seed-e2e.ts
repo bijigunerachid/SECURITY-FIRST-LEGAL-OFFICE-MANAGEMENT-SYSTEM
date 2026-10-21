@@ -4,6 +4,8 @@
 //
 //   npm run seed:e2e -w @lexora/api
 import { readFileSync } from "node:fs";
+import { readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import pg from "pg";
 import { loadConfig } from "../src/config/env.js";
 import { createDatabase } from "../src/lib/database.js";
@@ -35,9 +37,19 @@ for (const url of [config.databaseUrl, ownerUrl]) {
 const owner = new pg.Client({ connectionString: ownerUrl });
 await owner.connect();
 await owner.query(
-  'TRUNCATE "break_glass_grant", "party", "matter_member", "matter", "matter_counter", "client", "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
+  'TRUNCATE "document_version", "document", "break_glass_grant", "party", "matter_member", "matter", "matter_counter", "client", "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
 );
 await owner.end();
+
+// Uploaded test documents go with the database rows that described them.
+// The folders stay (the running API created them); only their files go.
+if (config.nodeEnv === "test") {
+  for (const folder of ["store", "quarantine"]) {
+    const dir = join(config.documents.storageDir, folder);
+    const names = await readdir(dir).catch(() => []);
+    await Promise.all(names.map((name) => rm(join(dir, name), { force: true })));
+  }
+}
 
 const db = createDatabase(config);
 const passwordHash = await hashPassword(data.password, config.argon2);

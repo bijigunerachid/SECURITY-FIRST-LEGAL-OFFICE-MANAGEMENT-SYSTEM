@@ -20,6 +20,10 @@ export function useErrorMessage() {
       case "forbidden":
       case "not_found":
       case "validation_failed":
+      case "payload_too_large":
+      case "unsupported_file_type":
+      case "malware_detected":
+      case "scan_unavailable":
         return t(`errors.${error.code}`);
       case "unauthenticated":
         return t("errors.session_expired");

@@ -4,10 +4,11 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: clients and matters (Phase 4).** Accounts, sign-in with a
-> second factor, user administration, clients, matters, matter teams,
-> parties, conflict-of-interest search and audited break-glass access work;
-> documents, hearings and invoices come next. Do not enter real client data
+> **Status: documents (Phase 5).** Accounts, sign-in with a second factor,
+> user administration, clients, matters, matter teams, parties,
+> conflict-of-interest search, audited break-glass access and matter
+> documents (upload with malware scanning, versions, download) work;
+> hearings, deadlines and invoices come next. Do not enter real client data
 > into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
@@ -46,6 +47,17 @@ npm run db:up              # start PostgreSQL (listens on 127.0.0.1:55432 only)
 npm run db:migrate         # apply migrations to the development database
 npx playwright install chromium   # browser for end-to-end tests (once)
 ```
+
+Document uploads need the ClamAV malware scanner. It uses 1–2 GB of memory,
+so it only runs when you start it; while it is stopped, every upload is
+refused (nothing is ever stored unscanned):
+
+```sh
+npm run scanner:up         # ClamAV on 127.0.0.1:53310 (first start: about 2 minutes)
+npm run scanner:down       # stop it again
+```
+
+Uploaded files are kept in `storage/documents-dev/` (ignored by Git).
 
 Then, in two terminals:
 
@@ -97,7 +109,8 @@ asking for a merge:
 
 `npm run test:e2e` needs `npm run build` first. If ports 3000 or 4173 are
 used by other software, move the test servers, for example
-`E2E_API_PORT=3310 E2E_WEB_PORT=4310 npm run test:e2e` (in PowerShell, set
+`E2E_API_PORT=3310 E2E_WEB_PORT=4310 npm run test:e2e` (the fake malware
+scanner uses `E2E_SCANNER_PORT`, default 53311) (in PowerShell, set
 `$env:E2E_API_PORT` and `$env:E2E_WEB_PORT` first). CI also runs gitleaks over
 the whole Git history and a Trivy scan (see `.github/workflows/ci.yml`).
 

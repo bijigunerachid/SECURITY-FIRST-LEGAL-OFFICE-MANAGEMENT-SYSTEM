@@ -17,7 +17,8 @@
     "db:migrate:create": "node scripts/prisma-with-env.mjs .env migrate dev --create-only --name",
     "start:e2e": "node --env-file=.env.test dist/server.js",
     "admin": "tsx --conditions=@lexora/source --env-file=.env src/cli/admin.ts",
-    "seed:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/seed-e2e.ts"
+    "seed:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/seed-e2e.ts",
+    "fake-clamd:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/fake-clamd.ts"
   },
   "dependencies": {
     "@lexora/shared": "0.0.0",

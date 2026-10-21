@@ -68,8 +68,15 @@ jobs:
         run: npm run setup:dev
       - name: Start PostgreSQL
         run: npm run db:up
+      - name: Start ClamAV (real malware scanner, bundled signatures)
+        run: npm run scanner:up
+        env:
+          CLAMAV_NO_FRESHCLAMD: "true"
       - name: Integration tests (applies migrations to the test database first)
         run: npm run test:integration
+        env:
+          # Also runs the tests against the real ClamAV (EICAR test file).
+          CLAMAV_TEST_PORT: "53310"
       - run: npm run build
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
@@ -86,9 +93,9 @@ jobs:
             apps/web/playwright-report/
             apps/web/test-results/
           retention-days: 14
-      - name: Database logs on failure
+      - name: Database and scanner logs on failure
         if: ${{ failure() }}
-        run: docker compose -f compose.dev.yaml logs db
+        run: docker compose -f compose.dev.yaml --profile scanner logs db clamav
 
   security-scans:
     name: Secret and vulnerability scans

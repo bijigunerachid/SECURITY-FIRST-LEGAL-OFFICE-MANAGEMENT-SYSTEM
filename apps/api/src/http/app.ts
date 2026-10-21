@@ -3,6 +3,7 @@ import type { Config } from "../config/env.js";
 import type { DatabaseProbe } from "../lib/database.js";
 import type { Logger } from "../lib/logger.js";
 import type { AuthService } from "../modules/auth/auth-service.js";
+import type { DocumentService } from "../modules/documents/document-service.js";
 import type { BreakGlassService } from "../modules/matters/break-glass.js";
 import type { MatterService } from "../modules/matters/matter-service.js";
 import { csrfProtection, loadSession, requireSession } from "./middleware/auth.js";
@@ -11,6 +12,7 @@ import { requestLogger } from "./middleware/request-logger.js";
 import { noStore, requireJsonBody, securityHeaders } from "./middleware/security.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { authRouter } from "./routes/auth.js";
+import { documentsRouter } from "./routes/documents.js";
 import { healthRouter } from "./routes/health.js";
 import {
   breakGlassRouter,
@@ -29,6 +31,7 @@ export interface AppDependencies {
   auth: AuthService;
   matters: MatterService;
   breakGlass: BreakGlassService;
+  documents: DocumentService;
 }
 
 export function createApp({
@@ -38,6 +41,7 @@ export function createApp({
   auth,
   matters,
   breakGlass,
+  documents,
 }: AppDependencies): Express {
   const app = express();
 
@@ -65,6 +69,7 @@ export function createApp({
   api.use(requireSession());
   api.use("/admin/users", adminUsersRouter(auth));
   api.use("/clients", clientsRouter(matters));
+  api.use("/matters/:matterId/documents", documentsRouter(documents));
   api.use("/matters", mattersRouter(matters));
   api.use("/conflicts", conflictsRouter(matters));
   api.use("/break-glass", breakGlassRouter(breakGlass));

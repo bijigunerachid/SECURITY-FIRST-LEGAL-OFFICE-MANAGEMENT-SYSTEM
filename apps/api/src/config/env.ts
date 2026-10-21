@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 /**
@@ -108,6 +109,20 @@ const envSchema = z
       .max(1_048_576)
       .default(65_536),
     ARGON2_ITERATIONS: z.coerce.number().int().min(ARGON2_MIN_ITERATIONS).max(10).default(3),
+    /**
+     * Private folder for uploaded documents (quarantine and storage), outside
+     * any web root. Absolute path; created at startup with owner-only rights.
+     */
+    DOCUMENT_STORAGE_DIR: z
+      .string()
+      .min(1)
+      .refine((value) => isAbsolute(value), { message: "must be an absolute path" }),
+    /** ClamAV daemon (clamd). Uploads are refused while it cannot be reached. */
+    CLAMAV_HOST: z.string().min(1).default("127.0.0.1"),
+    CLAMAV_PORT: port.default(3310),
+    CLAMAV_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(300).default(60),
+    /** Largest accepted document (decision D8: 25 MB). */
+    UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(100).default(25),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") {
@@ -161,6 +176,8 @@ export interface Config {
   sessionIdleMs: number;
   sessionAbsoluteMs: number;
   argon2: { memoryKib: number; iterations: number };
+  documents: { storageDir: string; maxUploadBytes: number };
+  clamav: { host: string; port: number; timeoutMs: number };
 }
 
 /** Thrown when settings are missing or invalid. Never contains setting values. */
@@ -240,5 +257,14 @@ export function loadConfig(
     sessionIdleMs: e.SESSION_IDLE_MINUTES * 60_000,
     sessionAbsoluteMs: e.SESSION_ABSOLUTE_HOURS * 3_600_000,
     argon2: { memoryKib: e.ARGON2_MEMORY_KIB, iterations: e.ARGON2_ITERATIONS },
+    documents: {
+      storageDir: e.DOCUMENT_STORAGE_DIR,
+      maxUploadBytes: e.UPLOAD_MAX_MB * 1024 * 1024,
+    },
+    clamav: {
+      host: e.CLAMAV_HOST,
+      port: e.CLAMAV_PORT,
+      timeoutMs: e.CLAMAV_TIMEOUT_SECONDS * 1000,
+    },
   };
 }

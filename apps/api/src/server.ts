@@ -37,6 +37,13 @@ async function start(): Promise<void> {
 
   const services = createServices(db, config);
   const { auth } = services;
+  try {
+    // Document folders must exist and be writable before uploads are accepted.
+    await services.storage.init();
+  } catch {
+    logger.fatal("document storage folder is missing or not writable (DOCUMENT_STORAGE_DIR)");
+    process.exit(1);
+  }
   const app = createApp({ config, logger, database: createDatabaseProbe(db), ...services });
 
   // Expired sessions and rate-limit windows are also removed when touched;
@@ -56,7 +63,9 @@ async function start(): Promise<void> {
 
   // Limit slow or stalled clients.
   server.headersTimeout = 15_000;
-  server.requestTimeout = 30_000;
+  // Long enough for a 25 MB upload over a slow office Wi-Fi link; headers
+  // must still arrive within 15 seconds.
+  server.requestTimeout = 120_000;
   server.keepAliveTimeout = 5_000;
 
   let shuttingDown = false;

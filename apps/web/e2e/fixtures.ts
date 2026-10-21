@@ -35,6 +35,21 @@ export const test = base.extend<{ consoleErrors: string[] }>({
 
 export { expect };
 
+/**
+ * For a test that deliberately triggers refused requests (for example an
+ * upload the scanner rejects): removes exactly one console message per
+ * listed status, so any other error still fails the test.
+ */
+export function expectRefusals(consoleErrors: string[], statuses: number[]): void {
+  for (const status of statuses) {
+    const index = consoleErrors.findIndex((message) =>
+      message.includes(`the server responded with a status of ${status}`),
+    );
+    expect(index, `console message for HTTP ${status}`).toBeGreaterThanOrEqual(0);
+    consoleErrors.splice(index, 1);
+  }
+}
+
 /** The page must never scroll sideways (a common RTL and phone layout bug). */
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
   const overflow = await page.evaluate(
