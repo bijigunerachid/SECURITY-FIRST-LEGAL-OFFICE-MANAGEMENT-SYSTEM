@@ -266,6 +266,16 @@ failing test then passed 20 times out of 20, and the full suite passed.
 End-to-end ports can now be moved with `E2E_API_PORT` and `E2E_WEB_PORT`
 when 3000 or 4173 are taken by other software (defaults unchanged).
 
+**Second CI run (2026-10-21).** `npm audit` and Trivy failed on newly
+published advisories for Vite 8.3.2 (the bundled `launch-editor`: command
+injection and argument escaping on Windows, GHSA-698v-4r3x-3vcv,
+GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm). The code is part of Vite's
+development server, which never runs in production, but the alert is fixed
+rather than ignored. Vite is now pinned to 8.3.3 (released 2026-10-06, so
+within the 14-day cooldown; 8.3.4 and later are too new). Only Vite changed
+in the lockfile. Afterwards `npm audit` reported 0 vulnerabilities and every
+check was run again.
+
 Not verified in this phase: a passing CI run of this branch after the fix;
 Node.js 24 locally.
 
