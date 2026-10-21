@@ -12,6 +12,8 @@ import { LoginPage } from "@/features/auth/login-page";
 import { SetPasswordPage } from "@/features/auth/set-password-page";
 import { SetupMfaPage } from "@/features/auth/setup-mfa-page";
 import { VerifyPage } from "@/features/auth/verify-page";
+import { AgendaPage } from "@/features/calendar/agenda-page";
+import { NotificationsPage } from "@/features/calendar/notifications-page";
 import { HomePage } from "@/features/home/home-page";
 import { ClientPage } from "@/features/matters/client-page";
 import { ClientsPage } from "@/features/matters/clients-page";
@@ -41,6 +43,15 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage /> },
           { path: "security", element: <SecurityPage /> },
+          {
+            path: "agenda",
+            element: (
+              <RequireRole roles={["lawyer", "assistant"]}>
+                <AgendaPage />
+              </RequireRole>
+            ),
+          },
+          { path: "notifications", element: <NotificationsPage /> },
           { path: "matters", element: <MattersPage /> },
           {
             path: "matters/new",

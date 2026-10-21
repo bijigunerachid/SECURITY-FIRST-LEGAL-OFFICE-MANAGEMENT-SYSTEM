@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, Dialog, Section } from "@/components/ui/feedback";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
 import { useSession } from "@/features/auth/session";
+import { HearingsSection } from "@/features/calendar/hearings-section";
+import { TasksSection } from "@/features/calendar/tasks-section";
 import { DocumentsSection } from "@/features/documents/documents-section";
 import { useErrorMessage } from "@/features/auth/use-error-message";
 import { isApiError, send } from "@/lib/api";
@@ -872,6 +874,8 @@ export function MatterPage() {
       <DetailsSection matter={matter} />
       <TeamSection matter={matter} />
       <PartiesSection matter={matter} />
+      <HearingsSection matter={matter} />
+      <TasksSection matter={matter} />
       <DocumentsSection matter={matter} />
     </article>
   );

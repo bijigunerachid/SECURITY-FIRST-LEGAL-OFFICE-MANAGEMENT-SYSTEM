@@ -204,7 +204,10 @@ test.describe("an administrator", () => {
       path: testInfo.outputPath(`break-glass-fr-${testInfo.project.name}.png`),
       fullPage: true,
     });
-    await page.getByRole("button", { name: `Mettre fin à l'accès ${shared.reference}` }).click();
+    // The reference is wrapped in invisible left-to-right marks (for Arabic text).
+    await page
+      .getByRole("button", { name: new RegExp(`^Mettre fin à l'accès .?${shared.reference}.?$`) })
+      .click();
     await expect(page.getByText("Aucun accès d'urgence en cours.")).toBeVisible();
     await page.goto(shared.url);
     await expect(

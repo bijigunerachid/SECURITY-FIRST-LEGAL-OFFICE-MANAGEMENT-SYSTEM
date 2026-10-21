@@ -18,6 +18,8 @@ const all = {
   claimLead: false,
   writeDocuments: true,
   deleteDocuments: true,
+  writeCalendar: true,
+  deleteTasks: true,
 };
 
 const matter = (permissions: Partial<typeof all> = {}): MatterDetail => ({
@@ -71,6 +73,9 @@ function setUp(permissions: Partial<typeof all> = {}, extra: Parameters<typeof m
     "GET /api/auth/session": signedIn(),
     [`GET /api/matters/${MATTER_ID}`]: jsonResponse(200, { matter: matter(permissions) }),
     [`GET ${BASE}`]: jsonResponse(200, { documents: [doc] }),
+    [`GET /api/matters/${MATTER_ID}/hearings`]: jsonResponse(200, { hearings: [] }),
+    [`GET /api/matters/${MATTER_ID}/tasks`]: jsonResponse(200, { tasks: [] }),
+    "GET /api/notifications": jsonResponse(200, { notifications: [], unread: 0 }),
     ...extra,
   });
   const rendered = renderRoute(`/matters/${MATTER_ID}`);
@@ -158,7 +163,8 @@ describe("documents section", () => {
     const { container } = setUp({}, { [`POST ${BASE}`]: apiError(status, code) });
     await screen.findByText("Bail commercial.pdf");
     await userEvent.upload(fileInput(container), new File(["%PDF"], "x.pdf"));
-    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+    const section = screen.getByRole("region", { name: "Documents" });
+    expect(await within(section).findByRole("alert")).toHaveTextContent(text);
   });
 
   it("asks before deleting, then sends the deletion", async () => {

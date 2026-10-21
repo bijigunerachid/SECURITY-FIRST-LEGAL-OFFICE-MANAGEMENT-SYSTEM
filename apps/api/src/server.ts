@@ -2,6 +2,7 @@ import { ConfigError, loadConfig } from "./config/env.js";
 import { createApp } from "./http/app.js";
 import { createDatabase, createDatabaseProbe } from "./lib/database.js";
 import { createLogger } from "./lib/logger.js";
+import { REQUIRED_TZDATA, runtimeTzdata, tzdataCheck } from "./lib/tzdata.js";
 import { createServices } from "./modules/services.js";
 
 const SHUTDOWN_GRACE_MS = 10_000;
@@ -25,6 +26,15 @@ async function start(): Promise<void> {
   }
 
   const logger = createLogger(config);
+  const tz = tzdataCheck(config.isProduction, runtimeTzdata());
+  if (tz !== "ok") {
+    const detail = { found: runtimeTzdata(), required: REQUIRED_TZDATA };
+    if (tz === "refuse") {
+      logger.fatal(detail, "outdated time-zone data: office times would be wrong; update Node.js");
+      process.exit(1);
+    }
+    logger.warn(detail, "outdated time-zone data: office times may be off by one hour");
+  }
   const db = createDatabase(config);
 
   // The API still starts if the database is down, so the problem is visible
@@ -36,7 +46,6 @@ async function start(): Promise<void> {
   }
 
   const services = createServices(db, config);
-  const { auth } = services;
   try {
     // Document folders must exist and be writable before uploads are accepted.
     await services.storage.init();
@@ -46,16 +55,8 @@ async function start(): Promise<void> {
   }
   const app = createApp({ config, logger, database: createDatabaseProbe(db), ...services });
 
-  // Expired sessions and rate-limit windows are also removed when touched;
-  // this sweep catches the rest. (Moves to the background worker in Phase 6.)
-  const sweep = setInterval(() => {
-    Promise.all([auth.sessions.purgeExpired(), auth.limiter.purgeExpired()]).catch(
-      (error: unknown) => {
-        logger.error({ err: error }, "cleanup of expired sessions failed");
-      },
-    );
-  }, 15 * 60_000);
-  sweep.unref();
+  // Periodic cleanup (expired sessions, rate-limit windows, abandoned
+  // uploads) and reminders run in the worker process: src/worker.ts.
 
   const server = app.listen(config.port, config.host, () => {
     logger.info({ host: config.host, port: config.port, env: config.nodeEnv }, "API listening");

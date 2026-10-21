@@ -36,6 +36,9 @@ export interface IntegrationContext {
 }
 
 const TABLES = [
+  "notification",
+  "matter_task",
+  "hearing",
   "document_version",
   "document",
   "break_glass_grant",

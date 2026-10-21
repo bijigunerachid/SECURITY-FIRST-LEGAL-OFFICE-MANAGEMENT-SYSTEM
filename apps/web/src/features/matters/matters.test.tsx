@@ -34,6 +34,8 @@ const allowed = {
   claimLead: false,
   writeDocuments: true,
   deleteDocuments: true,
+  writeCalendar: true,
+  deleteTasks: true,
 };
 
 const detail = (overrides: Partial<MatterDetail> = {}): MatterDetail => ({

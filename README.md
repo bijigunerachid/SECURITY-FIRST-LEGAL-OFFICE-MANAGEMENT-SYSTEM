@@ -4,12 +4,12 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: documents (Phase 5).** Accounts, sign-in with a second factor,
+> **Status: calendar (Phase 6).** Accounts, sign-in with a second factor,
 > user administration, clients, matters, matter teams, parties,
-> conflict-of-interest search, audited break-glass access and matter
-> documents (upload with malware scanning, versions, download) work;
-> hearings, deadlines and invoices come next. Do not enter real client data
-> into any version of Lexora until the
+> conflict-of-interest search, audited break-glass access, matter documents
+> (upload with malware scanning, versions, download), hearings, deadlines,
+> tasks, an agenda and in-app reminders work; fees, invoices and payments
+> come next. Do not enter real client data into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
 ## Documentation
@@ -35,9 +35,12 @@ French and Arabic.
 
 ## Development setup
 
-You need Node.js 24 LTS (22.13 or later also works), npm 11, and Docker
+You need Node.js 24 LTS, npm 11, and Docker
 (Docker Desktop on Windows or macOS). Run every command from the repository
-root.
+root. Older Node.js versions start, but carry time-zone data older than
+2026c, which still puts Morocco on UTC+1 after it moved to permanent UTC+0 on
+2026-09-20: hearing times would be off by one hour (the API warns at
+startup, and refuses to start in production).
 
 ```sh
 npm ci                     # install exact versions; install scripts are disabled (.npmrc)
@@ -64,6 +67,7 @@ Then, in two terminals:
 ```sh
 npm run dev:api            # API on http://127.0.0.1:3000
 npm run dev:web            # web app on http://127.0.0.1:5173
+npm run dev:worker         # background worker: reminders and cleanup (optional)
 ```
 
 Create your first administrator account (on a server, this is the only way;

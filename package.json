@@ -22,6 +22,7 @@
     "db:migrate:test": "npm run db:migrate:test -w @lexora/api",
     "generate": "npm run generate -w @lexora/api",
     "dev:api": "npm run dev -w @lexora/api",
+    "dev:worker": "npm run dev:worker -w @lexora/api",
     "dev:web": "npm run dev -w @lexora/web",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
@@ -36,7 +37,7 @@
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@types/node": "22.20.5",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsx-a11y": "6.10.2",
@@ -45,7 +46,7 @@
     "prettier": "3.9.9",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "overrides": {
     "playwright-core": "1.63.0",

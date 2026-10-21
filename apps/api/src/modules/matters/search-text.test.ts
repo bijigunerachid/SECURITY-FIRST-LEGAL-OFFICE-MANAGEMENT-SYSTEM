@@ -36,7 +36,7 @@ describe("identifierKey", () => {
 
 describe("office dates", () => {
   it("uses the Moroccan calendar day, not UTC", () => {
-    // 23:30 UTC on 31 December is already 1 January in Casablanca (UTC+1).
+    // 23:30 UTC on 31 December is already 1 January in Casablanca (UTC+1 in 2025).
     expect(officeToday(new Date("2025-12-31T23:30:00Z"))).toBe("2026-01-01");
     expect(officeToday(new Date("2026-06-15T12:00:00Z"))).toMatch(/^2026-06-15$/);
   });

@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { useForgetEverything, useSession } from "@/features/auth/session";
+import { NotificationBell } from "@/features/calendar/notifications-page";
 import { send } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ function MainNav() {
     { to: "/", label: t("nav.home"), end: true },
     ...(role === "lawyer" || role === "assistant"
       ? [
+          { to: "/agenda", label: t("nav.agenda"), end: false },
           { to: "/matters", label: t("nav.matters"), end: false },
           { to: "/clients", label: t("nav.clients"), end: false },
         ]
@@ -119,7 +121,8 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               <span className="hidden text-xs text-muted sm:block">{t("app.tagline")}</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {signedIn && <NotificationBell />}
             {signedIn && <AccountMenu />}
             <LanguageSwitcher />
           </div>
