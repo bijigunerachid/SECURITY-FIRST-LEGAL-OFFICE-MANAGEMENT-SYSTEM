@@ -4,7 +4,8 @@ import type { Express } from "express";
 import { loadConfig, type Config } from "../config/env.js";
 import { createApp } from "../http/app.js";
 import { createDatabase, createDatabaseProbe, type Database } from "../lib/database.js";
-import { AuthService } from "../modules/auth/auth-service.js";
+import type { AuthService } from "../modules/auth/auth-service.js";
+import { createServices } from "../modules/services.js";
 import { hashPassword } from "../modules/auth/passwords.js";
 import { SESSION_COOKIE } from "../modules/auth/sessions.js";
 import { currentTotp, encryptTotpSecret, newTotpSecret } from "../modules/auth/totp.js";
@@ -27,6 +28,12 @@ export interface IntegrationContext {
 }
 
 const TABLES = [
+  "break_glass_grant",
+  "party",
+  "matter_member",
+  "matter",
+  "matter_counter",
+  "client",
   "audit_event",
   "rate_limit_bucket",
   "password_token",
@@ -39,12 +46,13 @@ const TABLES = [
 export async function integrationContext(): Promise<IntegrationContext> {
   const config = loadConfig(process.env);
   const db = createDatabase(config);
-  const auth = new AuthService(db, config);
+  const services = createServices(db, config);
+  const { auth } = services;
   const app = createApp({
     config,
     logger: memoryLogger().logger,
     database: createDatabaseProbe(db),
-    auth,
+    ...services,
   });
 
   const ownerUrl = process.env["MIGRATION_DATABASE_URL"];

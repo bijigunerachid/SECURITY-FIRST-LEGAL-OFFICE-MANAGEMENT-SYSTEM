@@ -68,7 +68,7 @@ describe("StatusPage", () => {
 describe("routing", () => {
   it("shows a not-found page for unknown paths when signed in", async () => {
     mockApi({ "GET /api/auth/session": signedIn() });
-    renderRoute("/clients/123");
+    renderRoute("/archives/123");
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Page introuvable");
     expect(screen.getByRole("link", { name: "Retour à l'accueil" })).toHaveAttribute("href", "/");
   });

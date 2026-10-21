@@ -32,6 +32,30 @@
       "name": "Karim Phone",
       "role": "admin",
       "mfa": false
+    },
+    "assistant": {
+      "email": "nadia.assistant@e2e.test",
+      "name": "Nadia Assistante",
+      "role": "assistant",
+      "mfa": false
+    },
+    "colleague": {
+      "email": "omar.colleague@e2e.test",
+      "name": "Omar Confrère",
+      "role": "lawyer",
+      "mfa": false
+    },
+    "breakGlassDesktop": {
+      "email": "urgence.desktop@e2e.test",
+      "name": "Hicham Desktop",
+      "role": "admin",
+      "mfa": true
+    },
+    "breakGlassPhone": {
+      "email": "urgence.phone@e2e.test",
+      "name": "Hicham Phone",
+      "role": "admin",
+      "mfa": true
     }
   }
 }

@@ -141,3 +141,32 @@ chain).
 Still open: T5 and T6 (IDOR and cross-matter disclosure) until matters and
 the policy layer exist (Phase 4); T8 insider misuse until audit viewing and
 alerts (Phase 8).
+
+## Findings from Phase 4
+
+| ID  | Finding                                                                                                                                                                                           | Severity | Status                          | Resolution                                                                                                                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F18 | Escape sequences written by the development tooling were saved as raw invisible characters (direction overrides, control characters) in source files, the pattern used by "Trojan Source" attacks | Medium   | Verified                        | Fixed before commit: turned back into visible escapes; every changed file scanned (none remain). An automatic check in CI is proposed for Phase 9 |
+| F19 | Breaking the expiry rule for break-glass grants used by lists and client pages failed no test: single matters were checked through a second copy of the rule                                      | High     | Verified (by breaking the code) | Fixed: one rule in the policy module; tests cover the matter, the client and both lists after a grant ends and after it expires                   |
+| F20 | Links in the accent colour had about 4:1 contrast on white (WCAG AA needs 4.5:1)                                                                                                                  | Low      | Verified (axe)                  | Fixed: text colour with an accent underline                                                                                                       |
+| F21 | A wrapper element broke description lists, so screen readers could not pair labels and values                                                                                                     | Low      | Verified (axe)                  | Fixed                                                                                                                                             |
+
+### Threat mitigation status after Phase 4
+
+Verified by tests: **T5 IDOR/BOLA** for clients, matters, teams and parties
+(the access grid: 8 kinds of user × 13 endpoints, unchanged database after
+every refusal, IDs from other matters, malformed IDs); **T6 cross-matter
+disclosure** through lists, search and conflict search (query scopes from
+the policy module; restricted matters reveal no name, reference or status
+to non-members); **T7 mass assignment** for clients, matters, parties and
+grants (server-owned fields refused); **T9** administrators read no matter
+content without an audited, time-limited, read-only break-glass grant;
+**T12** names refuse direction-control characters.
+
+Accepted by design (owner to confirm): a conflict search shows any lawyer
+the names of clients and parties across the office, with the matter
+reference and lead lawyer for matters that are not restricted. This is the
+purpose of the search; it is limited to lawyers, rate limited and audited.
+
+Still open: T8 insider misuse until audit viewing and alerts (Phase 8).
+Documents (T10, T14) arrive in Phase 5.

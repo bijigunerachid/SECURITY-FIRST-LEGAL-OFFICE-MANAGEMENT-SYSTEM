@@ -19,6 +19,7 @@ export function useErrorMessage() {
       case "conflict":
       case "forbidden":
       case "not_found":
+      case "validation_failed":
         return t(`errors.${error.code}`);
       case "unauthenticated":
         return t("errors.session_expired");

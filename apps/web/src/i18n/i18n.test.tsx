@@ -15,9 +15,31 @@ function keysOf(value: object, prefix = ""): string[] {
   );
 }
 
+const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
+
 describe("translations", () => {
-  it("French and Arabic define exactly the same keys", () => {
-    expect(keysOf(ar).sort()).toEqual(keysOf(fr).sort());
+  it("French and Arabic define the same keys (plural forms aside)", () => {
+    const base = (locale: object) =>
+      [...new Set(keysOf(locale).map((k) => k.replace(PLURAL_SUFFIX, "")))].sort();
+    expect(base(ar)).toEqual(base(fr));
+  });
+
+  it("defines every plural form each language needs", () => {
+    for (const [language, locale] of [
+      ["fr", fr],
+      ["ar", ar],
+    ] as const) {
+      const keys = keysOf(locale);
+      const plurals = new Set(
+        keys.filter((k) => PLURAL_SUFFIX.test(k)).map((k) => k.replace(PLURAL_SUFFIX, "")),
+      );
+      const categories = new Intl.PluralRules(language).resolvedOptions().pluralCategories;
+      for (const key of plurals) {
+        for (const category of categories) {
+          expect(keys, `${language}: ${key}_${category}`).toContain(`${key}_${category}`);
+        }
+      }
+    }
   });
 
   it("has no empty strings", () => {

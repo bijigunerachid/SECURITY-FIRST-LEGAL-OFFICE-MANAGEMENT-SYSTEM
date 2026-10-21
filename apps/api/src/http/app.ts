@@ -3,6 +3,8 @@ import type { Config } from "../config/env.js";
 import type { DatabaseProbe } from "../lib/database.js";
 import type { Logger } from "../lib/logger.js";
 import type { AuthService } from "../modules/auth/auth-service.js";
+import type { BreakGlassService } from "../modules/matters/break-glass.js";
+import type { MatterService } from "../modules/matters/matter-service.js";
 import { csrfProtection, loadSession, requireSession } from "./middleware/auth.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
@@ -10,6 +12,12 @@ import { noStore, requireJsonBody, securityHeaders } from "./middleware/security
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { authRouter } from "./routes/auth.js";
 import { healthRouter } from "./routes/health.js";
+import {
+  breakGlassRouter,
+  clientsRouter,
+  conflictsRouter,
+  mattersRouter,
+} from "./routes/matters.js";
 
 /** Largest JSON body accepted. File uploads will use their own limit. */
 export const JSON_BODY_LIMIT = "100kb";
@@ -19,9 +27,18 @@ export interface AppDependencies {
   logger: Logger;
   database: DatabaseProbe;
   auth: AuthService;
+  matters: MatterService;
+  breakGlass: BreakGlassService;
 }
 
-export function createApp({ config, logger, database, auth }: AppDependencies): Express {
+export function createApp({
+  config,
+  logger,
+  database,
+  auth,
+  matters,
+  breakGlass,
+}: AppDependencies): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -47,6 +64,10 @@ export function createApp({ config, logger, database, auth }: AppDependencies): 
   // answer 401 to anonymous callers, so routes cannot be discovered by probing.
   api.use(requireSession());
   api.use("/admin/users", adminUsersRouter(auth));
+  api.use("/clients", clientsRouter(matters));
+  api.use("/matters", mattersRouter(matters));
+  api.use("/conflicts", conflictsRouter(matters));
+  api.use("/break-glass", breakGlassRouter(breakGlass));
   app.use("/api", api);
 
   app.use(notFoundHandler);

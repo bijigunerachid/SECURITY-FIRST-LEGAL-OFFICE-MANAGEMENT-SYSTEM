@@ -15,7 +15,15 @@ const data = JSON.parse(
 
 export const PASSWORD = data.password;
 export const accounts = data.accounts as Record<
-  "adminDesktop" | "adminPhone" | "lawyer" | "freshAdminDesktop" | "freshAdminPhone",
+  | "adminDesktop"
+  | "adminPhone"
+  | "lawyer"
+  | "assistant"
+  | "colleague"
+  | "freshAdminDesktop"
+  | "freshAdminPhone"
+  | "breakGlassDesktop"
+  | "breakGlassPhone",
   AccountsFile["accounts"][string]
 >;
 
@@ -23,6 +31,8 @@ export const storageState = {
   adminDesktop: "test-results/.auth/admin-desktop.json",
   adminPhone: "test-results/.auth/admin-phone.json",
   lawyer: "test-results/.auth/lawyer.json",
+  assistant: "test-results/.auth/assistant.json",
+  colleague: "test-results/.auth/colleague.json",
 };
 
 /** Authenticator code for a secret, `offsetSteps` periods of 30 s from now. */
@@ -37,6 +47,11 @@ export function adminFor(projectName: string) {
   return projectName === "phone"
     ? { account: accounts.adminPhone, state: storageState.adminPhone }
     : { account: accounts.adminDesktop, state: storageState.adminDesktop };
+}
+
+/** An administrator used only by the break-glass test, so its codes never collide with other tests. */
+export function breakGlassAdminFor(projectName: string) {
+  return projectName === "phone" ? accounts.breakGlassPhone : accounts.breakGlassDesktop;
 }
 
 export function freshAdminFor(projectName: string) {

@@ -4,10 +4,11 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: identity and sessions (Phase 3).** Accounts, sign-in with a
-> second factor, and user administration work; there are no clients or
-> matters yet. Do not enter real client data into any
-> version of Lexora until the
+> **Status: clients and matters (Phase 4).** Accounts, sign-in with a
+> second factor, user administration, clients, matters, matter teams,
+> parties, conflict-of-interest search and audited break-glass access work;
+> documents, hearings and invoices come next. Do not enter real client data
+> into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
 ## Documentation
@@ -72,7 +73,11 @@ Git. Run it again after pulling a new version: it adds any new settings to
 your existing env files without changing the old ones.
 
 End-to-end tests create their own synthetic accounts in the test database
-(`apps/api/scripts/e2e-accounts.json`, via `npm run seed:e2e -w @lexora/api`).
+(`apps/api/scripts/e2e-accounts.json`, via `npm run seed:e2e -w @lexora/api`);
+the matter tests then create their own clients and matters through the app.
+There is no demonstration data in the development database: sign in as the
+administrator you created, create a lawyer account, and open matters as
+that lawyer.
 
 ## Checks
 

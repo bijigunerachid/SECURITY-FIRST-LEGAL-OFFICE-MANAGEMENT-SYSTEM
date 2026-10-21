@@ -2,7 +2,7 @@ import { ConfigError, loadConfig } from "./config/env.js";
 import { createApp } from "./http/app.js";
 import { createDatabase, createDatabaseProbe } from "./lib/database.js";
 import { createLogger } from "./lib/logger.js";
-import { AuthService } from "./modules/auth/auth-service.js";
+import { createServices } from "./modules/services.js";
 
 const SHUTDOWN_GRACE_MS = 10_000;
 /**
@@ -35,8 +35,9 @@ async function start(): Promise<void> {
     logger.error("database unreachable at startup; readiness will report unavailable");
   }
 
-  const auth = new AuthService(db, config);
-  const app = createApp({ config, logger, database: createDatabaseProbe(db), auth });
+  const services = createServices(db, config);
+  const { auth } = services;
+  const app = createApp({ config, logger, database: createDatabaseProbe(db), ...services });
 
   // Expired sessions and rate-limit windows are also removed when touched;
   // this sweep catches the rest. (Moves to the background worker in Phase 6.)

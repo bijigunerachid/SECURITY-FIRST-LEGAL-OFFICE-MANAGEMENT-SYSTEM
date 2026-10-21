@@ -35,7 +35,7 @@ for (const url of [config.databaseUrl, ownerUrl]) {
 const owner = new pg.Client({ connectionString: ownerUrl });
 await owner.connect();
 await owner.query(
-  'TRUNCATE "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
+  'TRUNCATE "break_glass_grant", "party", "matter_member", "matter", "matter_counter", "client", "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
 );
 await owner.end();
 

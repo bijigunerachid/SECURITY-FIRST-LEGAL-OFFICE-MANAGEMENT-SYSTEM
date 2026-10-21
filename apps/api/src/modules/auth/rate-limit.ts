@@ -74,8 +74,13 @@ export class RateLimiter {
   }
 }
 
-/** Limits used by the authentication routes. */
+/** Limits used by the authentication routes and conflict searches. */
 export const RATE_RULES = {
+  /**
+   * Conflict searches by one user. They reveal names across the office
+   * (minimum fields only), so mass harvesting is slowed and audited.
+   */
+  conflictSearchesPerUser: { limit: 60, windowSeconds: 15 * 60 },
   /** All login attempts from one IP address. */
   loginPerIp: { limit: 30, windowSeconds: 15 * 60 },
   /** Failed logins for one account (keyed by hashed e-mail, existing or not). */

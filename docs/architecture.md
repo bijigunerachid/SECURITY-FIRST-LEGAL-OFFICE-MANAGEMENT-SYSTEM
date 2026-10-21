@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 3 (identity and sessions) built.** What is described under
+Status: **Phase 4 (authorization, clients and matters) built.** What is described under
 "[What exists now](#what-exists-now)" is implemented and tested; the rest of
 this document is the target design. Each phase updates it to describe what
 was actually built.
@@ -92,16 +92,21 @@ apps/
       modules/auth/     passwords, sessions, TOTP, recovery codes, rate limits,
                         AuthService (sign-in, second factor, user administration)
       modules/audit/    hash-chained audit log
+      modules/policy/   matter-policy.ts: who may do what, and the query scopes
+                        every list and search uses
+      modules/matters/  clients, matters, teams, parties (matter-service.ts),
+                        conflict search, break-glass access, search keys
+      modules/services.ts  builds every service on one database client
       generated/        Prisma client (generated, not committed)
       test/             test helpers, integration context, integration-test guard
-      policies/         (later) authorization rules and query scoping
   web/                  React application
     e2e/                Playwright end-to-end tests
     src/
       app/              router and providers
       components/       layout and UI components (shadcn/ui pattern)
       features/         one folder per area: auth/ (sign-in, second factor, guards,
-                        re-authentication), security/, admin/, home/, status/
+                        re-authentication), security/, admin/ (users, break-glass),
+                        matters/ (matters, clients, conflict search), home/, status/
       i18n/             French and Arabic translations, direction handling
       lib/              API client, helpers
       routes/           not-found and error pages
@@ -153,6 +158,26 @@ Phase 3 adds identity and sessions:
   then retries the action.
 - **CLI**: `npm run admin -w @lexora/api -- create | recover`.
 
+Phase 4 adds authorization, clients and matters:
+
+- **Data**: tables `client`, `matter`, `matter_counter`, `matter_member`,
+  `party` and `break_glass_grant` (migration `clients_and_matters`, with the
+  reviewed constraints and privilege changes in
+  `clients_and_matters_hardening`). Names and identifiers also store a
+  search key (lowercase, without accents or Arabic diacritics and letter
+  variants) used by searches.
+- **API**: `/api/clients` (list, record, read, edit), `/api/matters` (list,
+  open, read, edit, team candidates, add and remove members, hand over the
+  lead, parties), `/api/conflicts` (lawyers) and `/api/break-glass`
+  (administrators). Every service call goes through the policy module;
+  lists use its query scopes. Dates follow the office calendar
+  (Africa/Casablanca).
+- **Web**: matters list (search, status filter, pages kept in the address),
+  new matter (existing or new client, with a required conflict check for a
+  new client), matter page (details, client, team, parties), clients list
+  and client page, conflict search, and the break-glass page for
+  administrators. The menu shows each role only its sections.
+
 How workspaces find `@lexora/shared`: in development, tests and type
 checking, the custom export condition `@lexora/source` (and aliases in the
 Vite and Vitest configs) point to its TypeScript source, so no build step is
@@ -184,15 +209,18 @@ Authorization lives in the services and policies, not only in route
 middleware, so every code path (HTTP, background job, export) applies the
 same rules. See [security.md](security.md#authorization).
 
-## Data model (initial outline)
+## Data model
 
-Refined in Phases 3 to 7.
+Built so far (Phases 3 and 4); the rest is the outline refined in Phases 5
+to 7.
 
-- `User`, `Session`, `MfaFactor`, `RecoveryCode`, `PasswordResetToken`
-- `Client` (person or company), `Party` (opposing parties, other
-  participants)
-- `Matter` (case file), `MatterMember` (user, role in matter), restriction
-  flag
+- `User`, `Session`, `TotpFactor`, `RecoveryCode`, `PasswordToken`,
+  `RateLimitBucket` (Phase 3)
+- `Client` (person or company, created by a lawyer), `Matter` (reference,
+  area, status, restricted flag, client), `MatterCounter` (one row per
+  year), `MatterMember` (lead or member; exactly one lead), `Party`
+  (opposing party, opposing counsel, co-party, witness, expert, other),
+  `BreakGlassGrant` (administrator, matter, reason, expiry) (Phase 4)
 - `Document` (metadata, storage key, hash, detected type, scan status)
 - `Hearing`, `Deadline`, `Task`
 - `FeeAgreement`, `Invoice`, `InvoiceLine`, `Payment`, `InvoiceCounter`

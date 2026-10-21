@@ -55,7 +55,7 @@ test.describe("system status page", () => {
   });
 
   test("shows a helpful page for unknown addresses", async ({ page }) => {
-    await page.goto("/clients/123");
+    await page.goto("/archives/123");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page introuvable");
     await page.getByRole("link", { name: "Retour à l'accueil" }).click();
     await expect(page).toHaveURL("/");
