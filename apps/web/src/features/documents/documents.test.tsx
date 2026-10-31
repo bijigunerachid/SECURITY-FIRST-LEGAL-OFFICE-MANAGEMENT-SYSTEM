@@ -24,6 +24,7 @@ const all = {
   readBilling: false,
   draftInvoices: false,
   manageBilling: false,
+  readHistory: false,
 };
 
 const matter = (permissions: Partial<typeof all> = {}): MatterDetail => ({

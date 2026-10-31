@@ -71,6 +71,10 @@ model User {
   paymentsRecorded     Payment[]      @relation("paymentRecordedBy")
   paymentsVoided       Payment[]      @relation("paymentVoidedBy")
 
+  alertsAbout        SecurityAlert[] @relation("alertUser")
+  alertsAcknowledged SecurityAlert[] @relation("alertAcknowledgedBy")
+  alertsResolved     SecurityAlert[] @relation("alertResolvedBy")
+
   @@map("app_user")
 }
 
@@ -686,4 +690,57 @@ model Payment {
   @@index([invoiceId])
   @@index([receivedOn])
   @@map("payment")
+}
+
+// --- Security alerts (Phase 8) -------------------------------------------------------
+//
+// Raised by the worker from the audit log (repeated failures, probing,
+// break-glass access, a broken hash chain, backup problems). Shown to
+// administrators in the app; acknowledged and resolved, never deleted.
+
+enum AlertKind {
+  login_failures_account
+  login_failures_ip
+  access_denied
+  break_glass
+  audit_chain
+  backup_failed
+  backup_overdue
+}
+
+enum AlertSeverity {
+  high
+  critical
+}
+
+enum AlertStatus {
+  open
+  acknowledged
+  resolved
+}
+
+model SecurityAlert {
+  id               String        @id @default(uuid()) @db.Uuid
+  kind             AlertKind
+  severity         AlertSeverity
+  /// What the alert is about: an account ID, an IP address, a grant or audit event ID.
+  subject          String        @db.VarChar(64)
+  /// The account concerned, when there is one.
+  userId           String?       @map("user_id") @db.Uuid
+  user             User?         @relation("alertUser", fields: [userId], references: [id], onDelete: Restrict)
+  count            Int
+  firstSeenAt      DateTime      @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime      @map("last_seen_at") @db.Timestamptz(3)
+  status           AlertStatus   @default(open)
+  acknowledgedById String?       @map("acknowledged_by_id") @db.Uuid
+  acknowledgedBy   User?         @relation("alertAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: Restrict)
+  acknowledgedAt   DateTime?     @map("acknowledged_at") @db.Timestamptz(3)
+  resolvedById     String?       @map("resolved_by_id") @db.Uuid
+  resolvedBy       User?         @relation("alertResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+  resolvedAt       DateTime?     @map("resolved_at") @db.Timestamptz(3)
+  resolutionNote   String?       @map("resolution_note") @db.VarChar(500)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([status, lastSeenAt])
+  @@map("security_alert")
 }

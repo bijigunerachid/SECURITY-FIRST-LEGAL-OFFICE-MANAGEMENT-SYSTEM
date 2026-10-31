@@ -36,6 +36,7 @@ export interface IntegrationContext {
 }
 
 const TABLES = [
+  "security_alert",
   "payment",
   "invoice_line",
   "invoice",

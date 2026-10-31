@@ -4,13 +4,14 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: billing (Phase 7).** Accounts, sign-in with a second factor,
+> **Status: audit and alerts (Phase 8).** Accounts, sign-in with a second factor,
 > user administration, clients, matters, matter teams, parties,
 > conflict-of-interest search, audited break-glass access, matter documents
 > (upload with malware scanning, versions, download), hearings, deadlines,
 > tasks, an agenda, in-app reminders, fee agreements, invoices and credit
 > notes (gap-free numbers, printing), recorded payments and a CSV sales
-> journal work; the audit-log viewer and alerts come next. Do not enter
+> journal, an audit-log viewer, security alerts and matter histories work;
+> production readiness comes next. Do not enter
 > real client data into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 

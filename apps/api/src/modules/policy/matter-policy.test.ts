@@ -41,6 +41,7 @@ const cases: Case[] = [
       "update",
       "manageTeam",
       "setRestricted",
+      "readHistory",
       "writeParties",
       "updateClient",
       "writeDocuments",

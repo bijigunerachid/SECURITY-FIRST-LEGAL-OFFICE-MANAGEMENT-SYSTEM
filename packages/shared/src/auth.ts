@@ -113,6 +113,10 @@ export const adminUserSchema = z.strictObject({
   hasPassword: z.boolean(),
   createdAt: z.iso.datetime(),
   lastActiveAt: z.iso.datetime().nullable(),
+  /** Sessions not yet expired or signed out. */
+  activeSessions: z.number().int().min(0),
+  /** Failed sign-in, code and password checks in the last 24 hours. */
+  failedSignIns24h: z.number().int().min(0),
 });
 export type AdminUser = z.infer<typeof adminUserSchema>;
 

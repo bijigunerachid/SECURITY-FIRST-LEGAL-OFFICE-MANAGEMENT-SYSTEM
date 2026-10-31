@@ -184,6 +184,8 @@ export const matterPermissionsSchema = z.strictObject({
   draftInvoices: z.boolean(),
   /** Issue invoices and credit notes, record payments, manage fee agreements. Lawyers on the team only. */
   manageBilling: z.boolean(),
+  /** See who read or changed what on the matter (audit history). The lead lawyer only. */
+  readHistory: z.boolean(),
 });
 export type MatterPermissions = z.infer<typeof matterPermissionsSchema>;
 

@@ -20,6 +20,8 @@ const userRow = (overrides: Record<string, unknown> = {}) => ({
   hasPassword: true,
   createdAt: "2026-10-01T09:00:00.000Z",
   lastActiveAt: null,
+  activeSessions: 0,
+  failedSignIns24h: 0,
   ...overrides,
 });
 
@@ -85,7 +87,8 @@ describe("users page", () => {
       password: "olive tree beside the old harbour",
       code: "123456",
     });
-  });
+    // Types a password and a code key by key: slow under a full parallel run.
+  }, 15_000);
 
   it("does not offer role changes or disabling for the administrator's own account", async () => {
     mockApi({

@@ -194,6 +194,18 @@ Documents (T10, T14) arrive in Phase 5.
 | F28 | With only application checks, a bug (or a compromised API) could create an invoice already issued, or issue one with a number that skips or reuses the sequence                                                                                                                                                                                                                     | Medium   | Verified (database tests)               | Fixed in the database: invoices start as drafts, numbers must equal the series counter, counters move up by one, numbers are unique |
 | F29 | Moroccan invoice requirements (mentions, VAT rate on legal fees, e-invoicing) are not yet confirmed by a professional                                                                                                                                                                                                                                                               | Process  | Open                                    | Provisional defaults (D14) and the checklist in privacy-checklist.md section 5; to be confirmed before real invoices are issued     |
 
+## Findings from Phase 8
+
+| ID  | Finding                                                                                                                                                                               | Severity | Status                                                            | Resolution                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| F30 | Until now nothing told the office about attacks recorded in the audit log (password guessing, probing for other matters, break-glass use, a tampered log) unless someone read the log | Medium   | Verified (integration tests, 13 controls proven by breaking them) | In-app alerts raised every 5 minutes by the worker; daily hash-chain check (D16). Residual: nobody is told while no administrator is signed in |
+| F31 | Times in the new audit, history and alert screens would have been converted by the browser, whose time-zone data may be outdated (F26, F27)                                           | Low      | Verified (design review, test)                                    | The server sends office times; the browser only formats them                                                                                   |
+
+Phase 8 strengthens T2 (repeated failed checks raise alerts), T8 and T9
+(insider and administrator misuse: break-glass use alerts every
+administrator, lead lawyers see who read their matter), and T23 (the hash
+chain is checked daily and on demand).
+
 Billing reaches T5/T6 (every billing endpoint is in the access grid: outsiders
 get 404, break-glass administrators 403, assistants only read and draft), T8
 (issued invoices and payments cannot be rewritten or deleted, even by the

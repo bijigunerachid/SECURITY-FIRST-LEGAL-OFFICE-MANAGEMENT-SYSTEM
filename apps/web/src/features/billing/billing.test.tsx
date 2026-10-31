@@ -26,6 +26,7 @@ const permissions = {
   readBilling: true,
   draftInvoices: true,
   manageBilling: true,
+  readHistory: false,
 };
 
 const matter = (overrides: Partial<typeof permissions> = {}): MatterDetail => ({

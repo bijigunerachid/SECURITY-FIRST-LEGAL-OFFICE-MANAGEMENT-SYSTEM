@@ -1,5 +1,7 @@
 import type { Config } from "../config/env.js";
 import type { Database } from "../lib/database.js";
+import { AlertService } from "./alerts/alert-service.js";
+import { AuditService } from "./audit/audit-service.js";
 import { AuthService } from "./auth/auth-service.js";
 import { BillingService } from "./billing/billing-service.js";
 import { CalendarService } from "./calendar/calendar-service.js";
@@ -33,6 +35,8 @@ export function createServices(
     breakGlass: new BreakGlassService(db),
     calendar: new CalendarService(db),
     billing: new BillingService(db),
+    audit: new AuditService(db),
+    alerts: new AlertService(db),
     notifications: new NotificationService(db),
     documents: new DocumentService(db, storage, scanner, auth.limiter, {
       maxUploadBytes: config.documents.maxUploadBytes,

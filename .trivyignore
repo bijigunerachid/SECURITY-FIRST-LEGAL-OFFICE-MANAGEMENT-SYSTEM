@@ -1,0 +1,5 @@
+# Accepted for a limited time; keep in step with audit-exceptions.json and
+# docs/security.md (Supply chain). Trivy reports it again after the date.
+
+# minimatch (ESLint toolchain, development only): DoS from crafted glob patterns.
+CVE-2026-118764 exp:2026-11-15

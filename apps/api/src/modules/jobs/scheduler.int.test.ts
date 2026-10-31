@@ -133,7 +133,13 @@ describe("the worker's tasks", () => {
       storageDir: ctx.storageDir,
     });
     const results = await runDueTasks(ctx.db, tasks, logger());
-    expect(results.map((r) => r.status)).toEqual(["ok", "ok", "ok"]);
+    expect(results).toEqual([
+      { name: "reminders", status: "ok" },
+      { name: "purge-expired", status: "ok" },
+      { name: "quarantine-cleanup", status: "ok" },
+      { name: "security-alerts", status: "ok" },
+      { name: "audit-verify", status: "ok" },
+    ]);
     expect(await readdir(quarantine)).toEqual(["recent-upload"]);
   });
 });

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
+import { useAlertCount } from "@/features/admin/audit-queries";
 import { useForgetEverything, useSession } from "@/features/auth/session";
 import { NotificationBell } from "@/features/calendar/notifications-page";
 import { send } from "@/lib/api";
@@ -13,7 +14,9 @@ function MainNav() {
   const { t } = useTranslation();
   const user = useSession().data?.user;
   const role = user?.role;
-  const links = [
+  // Administrators see how many alerts still need handling.
+  const unresolved = useAlertCount(role === "admin").data?.unresolved ?? 0;
+  const links: { to: string; label: string; end: boolean; badge?: number }[] = [
     { to: "/", label: t("nav.home"), end: true },
     ...(role === "lawyer" || role === "assistant"
       ? [
@@ -27,6 +30,8 @@ function MainNav() {
     ...(role === "admin"
       ? [
           { to: "/admin/users", label: t("nav.users"), end: false },
+          { to: "/admin/alerts", label: t("nav.alerts"), end: false, badge: unresolved },
+          { to: "/admin/audit", label: t("nav.audit"), end: false },
           { to: "/admin/billing", label: t("nav.billing"), end: false },
           { to: "/admin/break-glass", label: t("nav.breakGlass"), end: false },
         ]
@@ -42,6 +47,11 @@ function MainNav() {
             <NavLink
               to={link.to}
               end={link.end}
+              aria-label={
+                link.badge
+                  ? `${link.label} (${t("nav.unresolvedAlerts", { n: link.badge })})`
+                  : undefined
+              }
               className={({ isActive }) =>
                 cn(
                   "inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap",
@@ -52,6 +62,15 @@ function MainNav() {
               }
             >
               {link.label}
+              {/* The number is for the eye; the link's label says it in words. */}
+              {link.badge !== undefined && link.badge > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="ms-1.5 rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger"
+                >
+                  {link.badge}
+                </span>
+              )}
             </NavLink>
           </li>
         ))}

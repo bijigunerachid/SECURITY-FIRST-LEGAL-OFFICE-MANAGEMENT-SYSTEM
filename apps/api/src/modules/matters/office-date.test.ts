@@ -6,6 +6,7 @@ import {
   officeToday,
   officeUtcOffsetMinutes,
   toOfficeLocal,
+  toOfficeLocalSeconds,
 } from "./office-date.js";
 
 describe("office time (Africa/Casablanca)", () => {
@@ -45,6 +46,11 @@ describe("office time (Africa/Casablanca)", () => {
     expect(daysBetween("2026-10-21", "2026-10-20")).toBe(-1);
     expect(officeToday(new Date("2025-03-10T23:30:00Z"))).toBe("2025-03-10");
     expect(officeToday(new Date("2025-12-31T23:30:00Z"))).toBe("2026-01-01");
+  });
+
+  it("shows recorded instants in office time, to the second", () => {
+    expect(toOfficeLocalSeconds(new Date("2025-11-03T08:30:15Z"))).toBe("2025-11-03T09:30:15");
+    expect(toOfficeLocalSeconds(new Date("2025-03-10T23:59:59Z"))).toBe("2025-03-10T23:59:59");
   });
 
   it("gives the office's offset in minutes, for the browser", () => {

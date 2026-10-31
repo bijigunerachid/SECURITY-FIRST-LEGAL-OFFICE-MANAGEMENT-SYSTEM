@@ -20,6 +20,7 @@
     "start:e2e": "node --env-file=.env.test dist/server.js",
     "worker:e2e": "node --env-file=.env.test dist/worker.js",
     "admin": "tsx --conditions=@lexora/source --env-file=.env src/cli/admin.ts",
+    "admin:e2e": "tsx --conditions=@lexora/source --env-file=.env.test src/cli/admin.ts",
     "seed:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/seed-e2e.ts",
     "fake-clamd:e2e": "tsx --conditions=@lexora/source --env-file=.env.test scripts/fake-clamd.ts"
   },
