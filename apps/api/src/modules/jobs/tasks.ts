@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Database } from "../../lib/database.js";
 import type { SessionStore } from "../auth/sessions.js";
 import type { RateLimiter } from "../auth/rate-limit.js";
+import { AlertService } from "../alerts/alert-service.js";
 import { generateReminders } from "../calendar/notifications.js";
 import type { PeriodicTask } from "./scheduler.js";
 
@@ -16,6 +17,7 @@ export function periodicTasks(deps: {
   limiter: RateLimiter;
   storageDir: string;
 }): PeriodicTask[] {
+  const alerts = new AlertService(deps.db);
   return [
     {
       name: "reminders",
@@ -46,6 +48,15 @@ export function periodicTasks(deps: {
         }
         return `${String(removed)} abandoned uploads removed`;
       },
+    },
+    {
+      // Repeated failures, probing, break-glass access and backup problems (Phase 8).
+      name: "security-alerts",
+      run: async (now) => `${String(await alerts.scan(now))} new alerts`,
+    },
+    {
+      name: "audit-verify",
+      run: () => alerts.verifyChain(),
     },
   ];
 }

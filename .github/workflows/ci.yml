@@ -114,4 +114,5 @@ jobs:
         run: >
           docker run --rm -v "$PWD:/scan:ro" "$TRIVY_IMAGE"
           fs --scanners vuln,secret,misconfig --include-dev-deps
+          --ignorefile /scan/.trivyignore
           --exit-code 1 --no-progress --skip-version-check /scan

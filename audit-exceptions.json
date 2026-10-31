@@ -1,0 +1,13 @@
+{
+  "$comment": "Advisories accepted for a limited time. Each needs a reason (also in docs/security.md, Supply chain) and an expiry date; scripts/audit-deps.mjs fails again after it. Keep in step with .trivyignore.",
+  "exceptions": [
+    {
+      "advisory": "GHSA-g3hv-75wg-m249",
+      "cve": "CVE-2026-118764",
+      "package": "minimatch",
+      "reason": "Moderate denial of service from crafted glob patterns. Used only by the ESLint toolchain in development, on glob patterns from our own configuration; never in the running application. Fixed only in minimatch 11.0.1 (2026-10-27), which ESLint does not use yet.",
+      "accepted": "2026-10-31",
+      "expires": "2026-11-15"
+    }
+  ]
+}

@@ -11,13 +11,15 @@ import { UserPlus } from "lucide-react";
 import { useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Alert, Card, Dialog, PageHeader } from "@/components/ui/feedback";
+import { Link } from "react-router";
+import { Alert, Badge, Card, Dialog, PageHeader } from "@/components/ui/feedback";
 import { Field, Input, Select } from "@/components/ui/form";
 import { getJson, send } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ReauthCancelled, useSensitiveAction } from "@/features/auth/reauth";
 import { useSession } from "@/features/auth/session";
 import { useErrorMessage } from "@/features/auth/use-error-message";
+import { RolesTable } from "./roles-table";
 
 const usersQueryKey = ["admin", "users"] as const;
 
@@ -425,6 +427,18 @@ export function UsersPage() {
                           : t("users.never"),
                       })}
                     </span>
+                    <span>{t("users.activeSessions", { n: user.activeSessions })}</span>
+                    {user.failedSignIns24h > 0 && (
+                      <Badge tone={user.failedSignIns24h >= 5 ? "danger" : "neutral"}>
+                        {t("users.failedSignIns", { n: user.failedSignIns24h })}
+                      </Badge>
+                    )}
+                    <Link
+                      to={`/admin/audit?actorId=${user.id}`}
+                      className="underline decoration-accent underline-offset-2"
+                    >
+                      {t("users.auditLink")}
+                    </Link>
                   </div>
                 </div>
                 <Button
@@ -472,6 +486,9 @@ export function UsersPage() {
           setLink(null);
         }}
       />
+      <div className="mt-10">
+        <RolesTable />
+      </div>
     </section>
   );
 }

@@ -1,5 +1,7 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/layout/app-shell";
+import { AlertsPage } from "@/features/admin/alerts-page";
+import { AuditPage } from "@/features/admin/audit-page";
 import { BillingAdminPage } from "@/features/admin/billing-admin-page";
 import { BreakGlassPage } from "@/features/admin/break-glass-page";
 import { UsersPage } from "@/features/admin/users-page";
@@ -103,6 +105,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAdmin>
                 <UsersPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: "admin/audit",
+            element: (
+              <RequireAdmin>
+                <AuditPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: "admin/alerts",
+            element: (
+              <RequireAdmin>
+                <AlertsPage />
               </RequireAdmin>
             ),
           },

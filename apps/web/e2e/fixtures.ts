@@ -50,12 +50,37 @@ export function expectRefusals(consoleErrors: string[], statuses: number[]): voi
   }
 }
 
-/** The page must never scroll sideways (a common RTL and phone layout bug). */
+/**
+ * The page must never scroll sideways (a common RTL and phone layout bug).
+ * When it does, the message names the deepest elements whose removal ends
+ * the overflow (found by hiding each one in turn), which also catches
+ * absolutely positioned text escaping a scroll area.
+ */
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow, "horizontal overflow in pixels").toBeLessThanOrEqual(0);
+  const { overflow, culprits } = await page.evaluate(() => {
+    const root = document.documentElement;
+    const excess = () => root.scrollWidth - root.clientWidth;
+    const overflowNow = excess();
+    const culprits: string[] = [];
+    if (overflowNow > 0) {
+      for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+        const before = el.style.display;
+        el.style.display = "none";
+        const fixed = excess() <= 0;
+        el.style.display = before;
+        if (fixed) {
+          culprits.push(
+            `<${el.tagName.toLowerCase()} class="${el.className.slice(0, 60)}"> ${el.textContent.slice(0, 30)}`,
+          );
+        }
+      }
+    }
+    return { overflow: overflowNow, culprits: culprits.slice(-3) };
+  });
+  expect(
+    overflow,
+    `horizontal overflow in pixels; removing any of these ends it:\n${culprits.join("\n")}`,
+  ).toBeLessThanOrEqual(0);
 }
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];

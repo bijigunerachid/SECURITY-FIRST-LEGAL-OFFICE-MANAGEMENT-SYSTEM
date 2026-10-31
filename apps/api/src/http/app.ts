@@ -2,6 +2,8 @@ import express, { type Express } from "express";
 import type { Config } from "../config/env.js";
 import type { DatabaseProbe } from "../lib/database.js";
 import type { Logger } from "../lib/logger.js";
+import type { AlertService } from "../modules/alerts/alert-service.js";
+import type { AuditService } from "../modules/audit/audit-service.js";
 import type { AuthService } from "../modules/auth/auth-service.js";
 import type { BillingService } from "../modules/billing/billing-service.js";
 import type { CalendarService } from "../modules/calendar/calendar-service.js";
@@ -13,6 +15,7 @@ import { csrfProtection, loadSession, requireSession } from "./middleware/auth.j
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { noStore, requireJsonBody, securityHeaders } from "./middleware/security.js";
+import { adminAlertsRouter, adminAuditRouter, matterHistoryRouter } from "./routes/admin-audit.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { authRouter } from "./routes/auth.js";
 import {
@@ -50,6 +53,8 @@ export interface AppDependencies {
   calendar: CalendarService;
   notifications: NotificationService;
   billing: BillingService;
+  audit: AuditService;
+  alerts: AlertService;
 }
 
 export function createApp({
@@ -63,6 +68,8 @@ export function createApp({
   calendar,
   notifications,
   billing,
+  audit,
+  alerts,
 }: AppDependencies): Express {
   const app = express();
 
@@ -98,12 +105,15 @@ export function createApp({
   // answer 401 to anonymous callers, so routes cannot be discovered by probing.
   api.use(requireSession());
   api.use("/admin/users", adminUsersRouter(auth));
+  api.use("/admin/audit", adminAuditRouter(audit));
+  api.use("/admin/alerts", adminAlertsRouter(alerts));
   api.use("/clients", clientsRouter(matters));
   api.use("/matters/:matterId/documents", documentsRouter(documents));
   api.use("/matters/:matterId/hearings", hearingsRouter(calendar));
   api.use("/matters/:matterId/tasks", tasksRouter(calendar));
   api.use("/matters/:matterId/fee-agreements", feeAgreementsRouter(billing));
   api.use("/matters/:matterId/invoices", matterInvoicesRouter(billing));
+  api.use("/matters/:matterId/history", matterHistoryRouter(audit));
   api.use("/matters", mattersRouter(matters));
   api.use("/conflicts", conflictsRouter(matters));
   api.use("/break-glass", breakGlassRouter(breakGlass));

@@ -40,6 +40,7 @@ const allowed = {
   readBilling: false,
   draftInvoices: false,
   manageBilling: false,
+  readHistory: false,
 };
 
 const detail = (overrides: Partial<MatterDetail> = {}): MatterDetail => ({

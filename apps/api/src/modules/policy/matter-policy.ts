@@ -39,7 +39,8 @@ export type MatterAction =
   | "deleteTasks"
   | "readBilling"
   | "draftInvoices"
-  | "manageBilling";
+  | "manageBilling"
+  | "readHistory";
 
 export const MATTER_ACTIONS: readonly MatterAction[] = [
   "read",
@@ -56,6 +57,7 @@ export const MATTER_ACTIONS: readonly MatterAction[] = [
   "readBilling",
   "draftInvoices",
   "manageBilling",
+  "readHistory",
 ];
 
 /** How the actor reaches a matter, from their membership and any break-glass grant. */
@@ -103,6 +105,7 @@ export function canOnMatter(
       return lawyer;
     case "manageTeam":
     case "setRestricted":
+    case "readHistory":
       // A lead who has been made an assistant loses these rights.
       return lawyer && lead;
     case "claimLead":
@@ -125,6 +128,7 @@ export function matterPermissions(actor: Actor, access: MatterAccess | null, fac
     readBilling: canOnMatter(actor, access, "readBilling", facts),
     draftInvoices: canOnMatter(actor, access, "draftInvoices", facts),
     manageBilling: canOnMatter(actor, access, "manageBilling", facts),
+    readHistory: canOnMatter(actor, access, "readHistory", facts),
   };
 }
 

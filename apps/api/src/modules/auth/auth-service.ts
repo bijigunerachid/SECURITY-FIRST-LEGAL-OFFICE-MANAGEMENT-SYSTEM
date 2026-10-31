@@ -664,7 +664,9 @@ export class AuthService {
     return revoked;
   }
 
+  /** Every account, with how many sessions are live and recent failed checks (for spotting attacks). */
   async listUsers() {
+    const now = new Date();
     const users = await this.db.user.findMany({
       orderBy: [{ disabledAt: { sort: "asc", nulls: "first" } }, { displayName: "asc" }],
       select: {
@@ -679,6 +681,28 @@ export class AuthService {
         sessions: { select: { lastSeenAt: true }, orderBy: { lastSeenAt: "desc" }, take: 1 },
       },
     });
+    const [live, failures] = await Promise.all([
+      this.db.session.groupBy({
+        by: ["userId"],
+        where: {
+          expiresAt: { gt: now },
+          lastSeenAt: { gt: new Date(now.getTime() - this.config.sessionIdleMs) },
+        },
+        _count: { _all: true },
+      }),
+      this.db.auditEvent.groupBy({
+        by: ["actorUserId"],
+        where: {
+          occurredAt: { gt: new Date(now.getTime() - 24 * 60 * 60_000) },
+          outcome: "failure",
+          action: { in: ["auth.login", "auth.mfa.verify", "auth.reauth"] },
+          actorUserId: { not: null },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+    const liveBy = new Map(live.map((r) => [r.userId, r._count._all]));
+    const failuresBy = new Map(failures.map((r) => [r.actorUserId, r._count._all]));
     return users.map((user) => ({
       id: user.id,
       email: user.email,
@@ -689,6 +713,8 @@ export class AuthService {
       hasPassword: user.passwordHash !== null,
       createdAt: user.createdAt.toISOString(),
       lastActiveAt: user.sessions[0]?.lastSeenAt.toISOString() ?? null,
+      activeSessions: liveBy.get(user.id) ?? 0,
+      failedSignIns24h: failuresBy.get(user.id) ?? 0,
     }));
   }
 }

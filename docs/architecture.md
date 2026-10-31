@@ -164,6 +164,20 @@ Phase 3 adds identity and sessions:
   then retries the action.
 - **CLI**: `npm run admin -w @lexora/api -- create | recover`.
 
+Phase 8 adds the audit viewer, alerts and administration:
+
+- **Data**: `security_alert` (kind, severity, subject, account, count,
+  first and last seen, handling), indexes on the audit log by matter, target
+  and outcome, and the periodic tasks `security-alerts` (5 minutes) and
+  `audit-verify` (daily). Migration `audit_alerts`.
+- **API**: `/api/admin/audit` (search, verify), `/api/admin/alerts` (list,
+  count, acknowledge, resolve), `/api/matters/:matterId/history`; the user
+  list adds live sessions and recent failed checks. CLI:
+  `admin backup-report` for the backup job.
+- **Web**: audit-log page, alerts page with a count in the menu, a history
+  section on the matter page (lead lawyer), and a role table on the users
+  page.
+
 Phase 7 adds fees, invoices and payments:
 
 - **Data**: `billing_settings` (one row: the office details printed on
@@ -288,6 +302,8 @@ Built so far (Phases 3 to 7).
   details), `InvoiceLine` (fee or disbursement, quantity in hundredths, unit
   price and net in centimes), `Payment` (payment or refund, voided with a
   reason), `InvoiceCounter` (series and year) (Phase 7)
+- `SecurityAlert` (raised by the worker from the audit log; acknowledged
+  and resolved, never deleted) (Phase 8)
 - `AuditEvent` (append-only for the application)
 
 Records that hold legal or financial history are archived, not hard deleted.

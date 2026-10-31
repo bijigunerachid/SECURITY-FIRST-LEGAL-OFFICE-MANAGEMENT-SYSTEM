@@ -25,6 +25,7 @@ import { BillingSection } from "@/features/billing/billing-section";
 import { HearingsSection } from "@/features/calendar/hearings-section";
 import { TasksSection } from "@/features/calendar/tasks-section";
 import { DocumentsSection } from "@/features/documents/documents-section";
+import { HistorySection } from "./history-section";
 import { useErrorMessage } from "@/features/auth/use-error-message";
 import { isApiError, send } from "@/lib/api";
 import {
@@ -879,6 +880,7 @@ export function MatterPage() {
       <TasksSection matter={matter} />
       <DocumentsSection matter={matter} />
       <BillingSection matter={matter} />
+      <HistorySection matter={matter} />
     </article>
   );
 }

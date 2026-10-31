@@ -249,7 +249,7 @@ function Summary() {
               role="region"
               aria-label={t("billingAdmin.summaryTable")}
               tabIndex={0}
-              className="overflow-x-auto rounded-xl"
+              className="relative overflow-x-auto rounded-xl"
             >
               <table className="w-full min-w-[34rem] text-sm">
                 <caption className="sr-only">{t("billingAdmin.summaryTitle")}</caption>

@@ -68,6 +68,13 @@ export function officeUtcOffsetMinutes(now: Date = new Date()): number {
   return Math.round(officeOffsetMs(now) / 60_000);
 }
 
+/** "YYYY-MM-DDTHH:mm:ss" in office time, for showing recorded instants (audit log, alerts). */
+export function toOfficeLocalSeconds(date: Date): string {
+  const p = officeParts(date);
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${String(p.year)}-${two(p.month)}-${two(p.day)}T${two(p.hour)}:${two(p.minute)}:${two(p.second)}`;
+}
+
 /** "YYYY-MM-DDTHH:mm" in office time, for date-time inputs. */
 export function toOfficeLocal(date: Date): string {
   const p = officeParts(date);
