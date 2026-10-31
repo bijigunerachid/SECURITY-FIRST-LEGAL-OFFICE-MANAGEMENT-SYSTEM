@@ -51,6 +51,7 @@ export function sessionFor(
     csrfToken: "csrf-test-token",
     expiresAt: "2026-10-18T20:00:00.000Z",
     recentlyReauthenticated: false,
+    officeUtcOffsetMinutes: 0,
   };
 }
 

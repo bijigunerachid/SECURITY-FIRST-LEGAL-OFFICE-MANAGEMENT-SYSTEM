@@ -61,6 +61,13 @@ export const sessionResponseSchema = z.strictObject({
   expiresAt: z.iso.datetime(),
   /** True when a sensitive action may be done without re-entering the password. */
   recentlyReauthenticated: z.boolean(),
+  /**
+   * The office's offset from UTC right now (Africa/Casablanca), from the
+   * server's time-zone data. The web app derives the office's date from it
+   * instead of the device's own data, which may be outdated (Morocco moved
+   * to permanent UTC+0 on 2026-09-20).
+   */
+  officeUtcOffsetMinutes: z.number().int().min(-720).max(840),
 });
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 

@@ -65,6 +65,12 @@ model User {
   tasksCompleted  MatterTask[]   @relation("taskCompletedBy")
   notifications   Notification[]
 
+  feeAgreementsCreated FeeAgreement[] @relation("feeAgreementCreatedBy")
+  invoicesCreated      Invoice[]      @relation("invoiceCreatedBy")
+  invoicesIssued       Invoice[]      @relation("invoiceIssuedBy")
+  paymentsRecorded     Payment[]      @relation("paymentRecordedBy")
+  paymentsVoided       Payment[]      @relation("paymentVoidedBy")
+
   @@map("app_user")
 }
 
@@ -269,6 +275,8 @@ model Matter {
   hearings         Hearing[]
   tasks            MatterTask[]
   notifications    Notification[]
+  feeAgreements    FeeAgreement[]
+  invoices         Invoice[]
 
   @@index([clientId])
   @@index([status])
@@ -494,4 +502,188 @@ model ScheduledTask {
   lastSummary     String?   @map("last_summary") @db.VarChar(200)
 
   @@map("scheduled_task")
+}
+
+// --- Fees, invoices and payments (Phase 7) ---------------------------------------------
+//
+// Amounts are whole centimes (MAD). Issued invoices and credit notes are
+// frozen by a trigger: only their running totals (credited, received,
+// balance) change afterwards, and balance = total - credited - received is
+// a CHECK constraint. Numbers are given at issue, without gaps, from a
+// counter row updated in the same transaction (see the migration).
+
+enum InvoiceKind {
+  invoice
+  credit_note
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+}
+
+enum LineKind {
+  fee
+  disbursement
+}
+
+enum PaymentKind {
+  payment
+  refund
+}
+
+enum PaymentMethod {
+  cash
+  cheque
+  transfer
+  card
+  other
+}
+
+enum FeeAgreementKind {
+  fixed
+  hourly
+  other
+}
+
+/// The office's details printed on invoices. Exactly one row (id 1), created by the migration.
+model BillingSettings {
+  id                 Int      @id @default(1) @db.SmallInt
+  officeName         String?  @map("office_name") @db.VarChar(200)
+  address            String?  @db.VarChar(500)
+  phone              String?  @db.VarChar(32)
+  email              String?  @db.VarChar(254)
+  /// Identifiant commun de l'entreprise (15 digits).
+  ice                String?  @db.VarChar(15)
+  /// Identifiant fiscal.
+  taxId              String?  @map("tax_id") @db.VarChar(10)
+  /// Taxe professionnelle (patente).
+  professionalTaxId  String?  @map("professional_tax_id") @db.VarChar(12)
+  barAssociation     String?  @map("bar_association") @db.VarChar(120)
+  bankName           String?  @map("bank_name") @db.VarChar(120)
+  /// Relevé d'identité bancaire (24 digits).
+  rib                String?  @db.VarChar(24)
+  /// Basis points: 2000 = 20 %.
+  vatRateBasisPoints Int      @default(2000) @map("vat_rate_basis_points")
+  paymentTermDays    Int      @default(30) @map("payment_term_days")
+  invoiceNote        String?  @map("invoice_note") @db.VarChar(1000)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("billing_settings")
+}
+
+/// The written fee agreement (convention d'honoraires) of a matter. Ended, never deleted.
+model FeeAgreement {
+  id                 String           @id @default(uuid()) @db.Uuid
+  matterId           String           @map("matter_id") @db.Uuid
+  matter             Matter           @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  kind               FeeAgreementKind
+  title              String           @db.VarChar(200)
+  amountCentimes     BigInt?          @map("amount_centimes")
+  hourlyRateCentimes BigInt?          @map("hourly_rate_centimes")
+  signedOn           DateTime?        @map("signed_on") @db.Date
+  terms              String?          @db.VarChar(4000)
+  endedOn            DateTime?        @map("ended_on") @db.Date
+  createdById        String           @map("created_by_id") @db.Uuid
+  createdBy          User             @relation("feeAgreementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([matterId])
+  @@map("fee_agreement")
+}
+
+/// Gap-free counter per series ("F" invoices, "AV" credit notes) and office year.
+model InvoiceCounter {
+  series    String @db.VarChar(4)
+  year      Int
+  lastValue Int    @map("last_value")
+
+  @@id([series, year])
+  @@map("invoice_counter")
+}
+
+/// An invoice or a credit note. Drafts can be edited and deleted; issued ones never change.
+model Invoice {
+  id                    String        @id @default(uuid()) @db.Uuid
+  matterId              String        @map("matter_id") @db.Uuid
+  matter                Matter        @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  kind                  InvoiceKind
+  status                InvoiceStatus @default(draft)
+  /// F-YYYY-NNNN or AV-YYYY-NNNN, given at issue.
+  number                String?       @unique @db.VarChar(20)
+  issuedOn              DateTime?     @map("issued_on") @db.Date
+  dueOn                 DateTime?     @map("due_on") @db.Date
+  /// For a credit note: the issued invoice it corrects.
+  creditedInvoiceId     String?       @map("credited_invoice_id") @db.Uuid
+  creditedInvoice       Invoice?      @relation("creditNotes", fields: [creditedInvoiceId], references: [id], onDelete: Restrict)
+  creditNotes           Invoice[]     @relation("creditNotes")
+  notes                 String?       @db.VarChar(2000)
+  /// VAT on fee lines, in basis points. Follows the office rate until issued.
+  feeVatRateBasisPoints Int           @map("fee_vat_rate_basis_points")
+  subtotalCentimes      BigInt        @default(0) @map("subtotal_centimes")
+  vatCentimes           BigInt        @default(0) @map("vat_centimes")
+  totalCentimes         BigInt        @default(0) @map("total_centimes")
+  /// Sum of issued credit notes against this invoice.
+  creditedCentimes      BigInt        @default(0) @map("credited_centimes")
+  /// Payments minus refunds, ignoring voided ones.
+  receivedCentimes      BigInt        @default(0) @map("received_centimes")
+  balanceCentimes       BigInt        @default(0) @map("balance_centimes")
+  /// Office and client details as printed, frozen at issue.
+  seller                Json?
+  buyer                 Json?
+  createdById           String        @map("created_by_id") @db.Uuid
+  createdBy             User          @relation("invoiceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  issuedById            String?       @map("issued_by_id") @db.Uuid
+  issuedBy              User?         @relation("invoiceIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  @@index([matterId])
+  @@index([status, issuedOn])
+  @@index([creditedInvoiceId])
+  @@map("invoice")
+}
+
+model InvoiceLine {
+  id                 String   @id @default(uuid()) @db.Uuid
+  invoiceId          String   @map("invoice_id") @db.Uuid
+  invoice            Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position           Int
+  kind               LineKind
+  description        String   @db.VarChar(500)
+  quantityHundredths Int      @map("quantity_hundredths")
+  unitPriceCentimes  BigInt   @map("unit_price_centimes")
+  vatRateBasisPoints Int      @map("vat_rate_basis_points")
+  netCentimes        BigInt   @map("net_centimes")
+
+  @@unique([invoiceId, position])
+  @@map("invoice_line")
+}
+
+/// Money received for an invoice, or refunded. Never changed or deleted; a mistake is voided with a reason.
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceId      String        @map("invoice_id") @db.Uuid
+  invoice        Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  kind           PaymentKind
+  receivedOn     DateTime      @map("received_on") @db.Date
+  amountCentimes BigInt        @map("amount_centimes")
+  method         PaymentMethod
+  reference      String?       @db.VarChar(100)
+  notes          String?       @db.VarChar(500)
+  recordedById   String        @map("recorded_by_id") @db.Uuid
+  recordedBy     User          @relation("paymentRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  voidedAt       DateTime?     @map("voided_at") @db.Timestamptz(3)
+  voidedById     String?       @map("voided_by_id") @db.Uuid
+  voidedBy       User?         @relation("paymentVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
+  voidReason     String?       @map("void_reason") @db.VarChar(300)
+
+  @@index([invoiceId])
+  @@index([receivedOn])
+  @@map("payment")
 }

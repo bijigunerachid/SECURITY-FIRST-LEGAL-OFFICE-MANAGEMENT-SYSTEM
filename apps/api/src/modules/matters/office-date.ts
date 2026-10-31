@@ -63,6 +63,11 @@ function officeOffsetMs(date: Date): number {
   return asUtc - Math.floor(date.getTime() / 1000) * 1000;
 }
 
+/** The office's current offset from UTC in whole minutes (sent to the browser). */
+export function officeUtcOffsetMinutes(now: Date = new Date()): number {
+  return Math.round(officeOffsetMs(now) / 60_000);
+}
+
 /** "YYYY-MM-DDTHH:mm" in office time, for date-time inputs. */
 export function toOfficeLocal(date: Date): string {
   const p = officeParts(date);

@@ -152,12 +152,4 @@ export function invalidFields(error: z.ZodError | undefined | null): Set<string>
   return new Set(error?.issues.map((issue) => issue.path.map(String).join(".")) ?? []);
 }
 
-/** Today's date in the office (Morocco), as YYYY-MM-DD, for date inputs. */
-export function officeToday(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Casablanca",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
+export { officeToday } from "@/lib/office-date";

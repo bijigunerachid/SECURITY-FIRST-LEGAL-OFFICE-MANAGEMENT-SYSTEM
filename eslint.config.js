@@ -101,6 +101,9 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.flatConfigs.strict.rules,
+      // A named region that scrolls (a wide table on a phone) must be focusable
+      // so keyboard users can scroll it (axe: scrollable-region-focusable).
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { tags: [], roles: ["tabpanel", "region"] }],
     },
   },
 

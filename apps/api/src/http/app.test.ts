@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 import { apiErrorResponseSchema, readinessResponseSchema } from "@lexora/shared";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
@@ -124,6 +125,20 @@ describe("request bodies", () => {
         .post("/api/health/live")
         .set("Content-Type", contentType)
         .send("a=b")
+        .expect(415);
+      expect(res.body.error.code).toBe("unsupported_media_type");
+    },
+  );
+
+  it.each(["gzip", "deflate", "br"])(
+    "refuses %s-compressed bodies (never decompressed)",
+    async (encoding) => {
+      const { app } = testApp();
+      const res = await request(app)
+        .post("/api/health/live")
+        .set("Content-Type", "application/json")
+        .set("Content-Encoding", encoding)
+        .send(gzipSync(JSON.stringify({ a: 1 })))
         .expect(415);
       expect(res.body.error.code).toBe("unsupported_media_type");
     },

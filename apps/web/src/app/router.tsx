@@ -1,5 +1,6 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/layout/app-shell";
+import { BillingAdminPage } from "@/features/admin/billing-admin-page";
 import { BreakGlassPage } from "@/features/admin/break-glass-page";
 import { UsersPage } from "@/features/admin/users-page";
 import {
@@ -12,6 +13,8 @@ import { LoginPage } from "@/features/auth/login-page";
 import { SetPasswordPage } from "@/features/auth/set-password-page";
 import { SetupMfaPage } from "@/features/auth/setup-mfa-page";
 import { VerifyPage } from "@/features/auth/verify-page";
+import { InvoicePage } from "@/features/billing/invoice-page";
+import { InvoicesPage } from "@/features/billing/invoices-page";
 import { AgendaPage } from "@/features/calendar/agenda-page";
 import { NotificationsPage } from "@/features/calendar/notifications-page";
 import { HomePage } from "@/features/home/home-page";
@@ -63,6 +66,22 @@ export const routes: RouteObject[] = [
           },
           { path: "matters/:matterId", element: <MatterPage /> },
           {
+            path: "matters/:matterId/invoices/:invoiceId",
+            element: (
+              <RequireRole roles={["lawyer", "assistant"]}>
+                <InvoicePage />
+              </RequireRole>
+            ),
+          },
+          {
+            path: "invoices",
+            element: (
+              <RequireRole roles={["lawyer", "assistant"]}>
+                <InvoicesPage />
+              </RequireRole>
+            ),
+          },
+          {
             path: "clients",
             element: (
               <RequireRole roles={["lawyer", "assistant"]}>
@@ -84,6 +103,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAdmin>
                 <UsersPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: "admin/billing",
+            element: (
+              <RequireAdmin>
+                <BillingAdminPage />
               </RequireAdmin>
             ),
           },

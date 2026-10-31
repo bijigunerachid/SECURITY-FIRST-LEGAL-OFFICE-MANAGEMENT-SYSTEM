@@ -36,7 +36,10 @@ export type MatterAction =
   | "writeDocuments"
   | "deleteDocuments"
   | "writeCalendar"
-  | "deleteTasks";
+  | "deleteTasks"
+  | "readBilling"
+  | "draftInvoices"
+  | "manageBilling";
 
 export const MATTER_ACTIONS: readonly MatterAction[] = [
   "read",
@@ -50,6 +53,9 @@ export const MATTER_ACTIONS: readonly MatterAction[] = [
   "deleteDocuments",
   "writeCalendar",
   "deleteTasks",
+  "readBilling",
+  "draftInvoices",
+  "manageBilling",
 ];
 
 /** How the actor reaches a matter, from their membership and any break-glass grant. */
@@ -76,7 +82,7 @@ export function canOnMatter(
   facts: MatterFacts,
 ): boolean {
   if (!access) return false;
-  // Break-glass access is read-only.
+  // Break-glass access is read-only, and never reaches the matter's money.
   if (access.kind === "break_glass") return action === "read";
 
   const lawyer = actor.role === "lawyer";
@@ -87,10 +93,13 @@ export function canOnMatter(
     case "updateClient":
     case "writeDocuments":
     case "writeCalendar":
+    case "readBilling":
+    case "draftInvoices":
       return true;
     case "update":
     case "deleteDocuments":
     case "deleteTasks":
+    case "manageBilling":
       return lawyer;
     case "manageTeam":
     case "setRestricted":
@@ -113,8 +122,16 @@ export function matterPermissions(actor: Actor, access: MatterAccess | null, fac
     deleteDocuments: canOnMatter(actor, access, "deleteDocuments", facts),
     writeCalendar: canOnMatter(actor, access, "writeCalendar", facts),
     deleteTasks: canOnMatter(actor, access, "deleteTasks", facts),
+    readBilling: canOnMatter(actor, access, "readBilling", facts),
+    draftInvoices: canOnMatter(actor, access, "draftInvoices", facts),
+    manageBilling: canOnMatter(actor, access, "manageBilling", facts),
   };
 }
+
+/** Office billing details and office-wide totals (no client or matter details). */
+export const canManageBillingSettings = (actor: Actor): boolean => actor.role === "admin";
+/** The invoice journal export covers the actor's own matters only. */
+export const canExportInvoices = (actor: Actor): boolean => actor.role === "lawyer";
 
 /** Only lawyers open files and run conflict searches. */
 export const canCreateClientsAndMatters = (actor: Actor): boolean => actor.role === "lawyer";
@@ -132,6 +149,15 @@ export function visibleMattersWhere(actor: Actor, now: Date): Prisma.MatterWhere
   if (actor.role === "admin") {
     return { breakGlassGrants: { some: activeGrantWhere(actor, now) } };
   }
+  return { members: { some: { userId: actor.id } } };
+}
+
+/**
+ * Matters whose billing the actor may see: the team's only. Break-glass
+ * access never reaches fees, invoices or payments.
+ */
+export function billingMattersWhere(actor: Actor): Prisma.MatterWhereInput {
+  if (actor.role === "admin") return { id: { in: [] } };
   return { members: { some: { userId: actor.id } } };
 }
 
