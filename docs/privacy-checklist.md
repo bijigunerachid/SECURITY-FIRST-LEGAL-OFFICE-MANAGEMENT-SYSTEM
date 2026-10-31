@@ -68,6 +68,12 @@ Only if invoicing is used in Lexora (Phase 7):
       work).
 - [ ] Any current or upcoming electronic invoicing requirement from the DGI.
 - [ ] Rules for handling client funds, if the app records them.
+- [ ] The VAT rate on lawyers' fees and on re-billed disbursements (Lexora
+      uses one office rate for fees, 20 % by default, and none on
+      disbursements: decision D14).
+- [ ] Whether the invoice must state the total in words ("arrêtée la
+      présente facture à la somme de…"); Lexora does not print it yet.
+- [ ] Cash payment limits that apply to the office.
 
 ## 6. Other laws to check
 

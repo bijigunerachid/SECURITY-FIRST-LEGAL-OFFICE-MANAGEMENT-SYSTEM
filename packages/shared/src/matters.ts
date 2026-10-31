@@ -178,6 +178,12 @@ export const matterPermissionsSchema = z.strictObject({
   writeCalendar: z.boolean(),
   /** Delete deadlines and tasks. Lawyers on the team only. */
   deleteTasks: z.boolean(),
+  /** See fee agreements, invoices and payments. The team only (not break-glass access). */
+  readBilling: z.boolean(),
+  /** Prepare and edit draft invoices and credit notes. */
+  draftInvoices: z.boolean(),
+  /** Issue invoices and credit notes, record payments, manage fee agreements. Lawyers on the team only. */
+  manageBilling: z.boolean(),
 });
 export type MatterPermissions = z.infer<typeof matterPermissionsSchema>;
 

@@ -20,6 +20,10 @@ const all = {
   deleteDocuments: true,
   writeCalendar: true,
   deleteTasks: true,
+  // Billing has its own tests; kept off so these pages load only what they test.
+  readBilling: false,
+  draftInvoices: false,
+  manageBilling: false,
 };
 
 const matter = (permissions: Partial<typeof all> = {}): MatterDetail => ({

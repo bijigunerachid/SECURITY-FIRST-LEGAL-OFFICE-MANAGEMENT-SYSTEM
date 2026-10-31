@@ -14,6 +14,7 @@ import type {
   RequestContext,
 } from "../../modules/auth/auth-service.js";
 import { isRecentlyReauthenticated } from "../../modules/auth/sessions.js";
+import { officeUtcOffsetMinutes } from "../../modules/matters/office-date.js";
 import {
   clearSessionCookie,
   requireRecentReauth,
@@ -53,6 +54,7 @@ export function authRouter(auth: AuthService): Router {
         csrfToken: session.csrfToken,
         expiresAt: session.expiresAt.toISOString(),
         recentlyReauthenticated: isRecentlyReauthenticated(session),
+        officeUtcOffsetMinutes: officeUtcOffsetMinutes(),
       };
       res.json(body);
     },

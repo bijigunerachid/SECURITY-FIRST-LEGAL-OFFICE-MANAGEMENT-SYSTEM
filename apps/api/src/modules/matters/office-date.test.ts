@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { runtimeTzdata, tzdataIsCurrent } from "../../lib/tzdata.js";
-import { daysBetween, fromOfficeLocal, officeToday, toOfficeLocal } from "./office-date.js";
+import {
+  daysBetween,
+  fromOfficeLocal,
+  officeToday,
+  officeUtcOffsetMinutes,
+  toOfficeLocal,
+} from "./office-date.js";
 
 describe("office time (Africa/Casablanca)", () => {
   // Settled past dates (every time-zone database agrees on them): UTC+1 in
@@ -39,5 +45,11 @@ describe("office time (Africa/Casablanca)", () => {
     expect(daysBetween("2026-10-21", "2026-10-20")).toBe(-1);
     expect(officeToday(new Date("2025-03-10T23:30:00Z"))).toBe("2025-03-10");
     expect(officeToday(new Date("2025-12-31T23:30:00Z"))).toBe("2026-01-01");
+  });
+
+  it("gives the office's offset in minutes, for the browser", () => {
+    expect(officeUtcOffsetMinutes(new Date("2025-11-03T08:30:00Z"))).toBe(60);
+    // Ramadan 2025: UTC+0.
+    expect(officeUtcOffsetMinutes(new Date("2025-03-10T12:00:00Z"))).toBe(0);
   });
 });

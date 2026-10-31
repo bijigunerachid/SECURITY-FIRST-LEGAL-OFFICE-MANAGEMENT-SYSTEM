@@ -1,6 +1,7 @@
 import { apiErrorResponseSchema, sessionResponseSchema } from "@lexora/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SESSION_COOKIE } from "../../modules/auth/sessions.js";
+import { officeUtcOffsetMinutes } from "../../modules/matters/office-date.js";
 import {
   Browser,
   codeFor,
@@ -69,6 +70,8 @@ describe("login", () => {
       mfaEnabled: false,
     });
     expect(session.state).toBe("active");
+    // The office's current offset, from the server's time-zone data (the browser's may be outdated).
+    expect(session.officeUtcOffsetMinutes).toBe(officeUtcOffsetMinutes());
     // The session response never carries secrets beyond the CSRF token.
     expect(JSON.stringify(session)).not.toMatch(/password|hash|secret/i);
   });

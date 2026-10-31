@@ -3,6 +3,7 @@ import type { Config } from "../config/env.js";
 import type { DatabaseProbe } from "../lib/database.js";
 import type { Logger } from "../lib/logger.js";
 import type { AuthService } from "../modules/auth/auth-service.js";
+import type { BillingService } from "../modules/billing/billing-service.js";
 import type { CalendarService } from "../modules/calendar/calendar-service.js";
 import type { NotificationService } from "../modules/calendar/notifications.js";
 import type { DocumentService } from "../modules/documents/document-service.js";
@@ -14,6 +15,12 @@ import { requestLogger } from "./middleware/request-logger.js";
 import { noStore, requireJsonBody, securityHeaders } from "./middleware/security.js";
 import { adminUsersRouter } from "./routes/admin-users.js";
 import { authRouter } from "./routes/auth.js";
+import {
+  billingRouter,
+  feeAgreementsRouter,
+  invoicesRouter,
+  matterInvoicesRouter,
+} from "./routes/billing.js";
 import {
   agendaRouter,
   hearingsRouter,
@@ -42,6 +49,7 @@ export interface AppDependencies {
   documents: DocumentService;
   calendar: CalendarService;
   notifications: NotificationService;
+  billing: BillingService;
 }
 
 export function createApp({
@@ -54,6 +62,7 @@ export function createApp({
   documents,
   calendar,
   notifications,
+  billing,
 }: AppDependencies): Express {
   const app = express();
 
@@ -65,7 +74,16 @@ export function createApp({
   app.use(securityHeaders());
   app.use(noStore);
   app.use(requireJsonBody);
-  app.use(express.json({ limit: JSON_BODY_LIMIT, strict: true, type: "application/json" }));
+  // Our client never compresses request bodies: refusing them (415) removes the
+  // decompression code path, a recurring source of denial-of-service bugs.
+  app.use(
+    express.json({
+      limit: JSON_BODY_LIMIT,
+      strict: true,
+      type: "application/json",
+      inflate: false,
+    }),
+  );
 
   const api = express.Router();
   // Public: health checks only.
@@ -84,11 +102,15 @@ export function createApp({
   api.use("/matters/:matterId/documents", documentsRouter(documents));
   api.use("/matters/:matterId/hearings", hearingsRouter(calendar));
   api.use("/matters/:matterId/tasks", tasksRouter(calendar));
+  api.use("/matters/:matterId/fee-agreements", feeAgreementsRouter(billing));
+  api.use("/matters/:matterId/invoices", matterInvoicesRouter(billing));
   api.use("/matters", mattersRouter(matters));
   api.use("/conflicts", conflictsRouter(matters));
   api.use("/break-glass", breakGlassRouter(breakGlass));
   api.use("/agenda", agendaRouter(calendar));
   api.use("/notifications", notificationsRouter(notifications));
+  api.use("/billing", billingRouter(billing));
+  api.use("/invoices", invoicesRouter(billing));
   app.use("/api", api);
 
   app.use(notFoundHandler);

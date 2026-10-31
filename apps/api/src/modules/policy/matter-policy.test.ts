@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MATTER_ACTIONS,
+  billingMattersWhere,
   canOnMatter,
   clientPermissions,
   matterAccess,
@@ -46,6 +47,9 @@ const cases: Case[] = [
       "writeCalendar",
       "deleteDocuments",
       "deleteTasks",
+      "readBilling",
+      "draftInvoices",
+      "manageBilling",
     ],
   ],
   [
@@ -63,6 +67,9 @@ const cases: Case[] = [
       "writeCalendar",
       "deleteDocuments",
       "deleteTasks",
+      "readBilling",
+      "draftInvoices",
+      "manageBilling",
     ],
   ],
   [
@@ -81,6 +88,9 @@ const cases: Case[] = [
       "writeCalendar",
       "deleteDocuments",
       "deleteTasks",
+      "readBilling",
+      "draftInvoices",
+      "manageBilling",
     ],
   ],
   [
@@ -89,7 +99,15 @@ const cases: Case[] = [
     "member",
     null,
     true,
-    ["read", "writeParties", "updateClient", "writeDocuments", "writeCalendar"],
+    [
+      "read",
+      "writeParties",
+      "updateClient",
+      "writeDocuments",
+      "writeCalendar",
+      "readBilling",
+      "draftInvoices",
+    ],
   ],
   [
     "assistant still marked lead after a role change",
@@ -97,7 +115,15 @@ const cases: Case[] = [
     "lead",
     null,
     false,
-    ["read", "writeParties", "updateClient", "writeDocuments", "writeCalendar"],
+    [
+      "read",
+      "writeParties",
+      "updateClient",
+      "writeDocuments",
+      "writeCalendar",
+      "readBilling",
+      "draftInvoices",
+    ],
   ],
   [
     "assistant when the lead can no longer act",
@@ -105,7 +131,15 @@ const cases: Case[] = [
     "member",
     null,
     false,
-    ["read", "writeParties", "updateClient", "writeDocuments", "writeCalendar"],
+    [
+      "read",
+      "writeParties",
+      "updateClient",
+      "writeDocuments",
+      "writeCalendar",
+      "readBilling",
+      "draftInvoices",
+    ],
   ],
   ["lawyer outside the team", lawyer, null, null, true, []],
   ["assistant outside the team", assistant, null, null, true, []],
@@ -142,6 +176,13 @@ describe("query scoping", () => {
     expect(visibleMattersWhere(admin, now)).toEqual({
       breakGlassGrants: { some: { userId: "admin", expiresAt: { gt: now }, endedAt: null } },
     });
+  });
+
+  it("limits billing to the team, and never extends it to administrators", () => {
+    expect(billingMattersWhere(assistant)).toEqual({
+      members: { some: { userId: "assistant" } },
+    });
+    expect(billingMattersWhere(admin)).toEqual({ id: { in: [] } });
   });
 
   it("shows clients through visible matters, and own clients that have no matter yet", () => {

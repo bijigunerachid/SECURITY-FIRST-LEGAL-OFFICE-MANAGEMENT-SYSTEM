@@ -3,7 +3,8 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 // Follows the shadcn/ui button pattern, trimmed to the variants in use.
-const buttonVariants = cva(
+/** Also used for links that look like buttons (downloads). */
+export const buttonVariants = cva(
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {

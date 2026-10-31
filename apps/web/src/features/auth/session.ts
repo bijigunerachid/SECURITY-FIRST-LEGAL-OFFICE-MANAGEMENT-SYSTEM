@@ -1,6 +1,7 @@
 import { sessionResponseSchema, type SessionResponse } from "@lexora/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, isApiError, setCsrfToken } from "@/lib/api";
+import { setOfficeUtcOffset } from "@/lib/office-date";
 
 export const sessionQueryKey = ["auth", "session"] as const;
 
@@ -9,6 +10,7 @@ async function fetchSession(signal: AbortSignal): Promise<SessionResponse | null
   try {
     const session = await getJson("/api/auth/session", sessionResponseSchema, { signal });
     setCsrfToken(session.csrfToken);
+    setOfficeUtcOffset(session.officeUtcOffsetMinutes);
     return session;
   } catch (error) {
     if (isApiError(error, "unauthenticated")) {

@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { LogOut, Scale } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -20,12 +20,14 @@ function MainNav() {
           { to: "/agenda", label: t("nav.agenda"), end: false },
           { to: "/matters", label: t("nav.matters"), end: false },
           { to: "/clients", label: t("nav.clients"), end: false },
+          { to: "/invoices", label: t("nav.billing"), end: false },
         ]
       : []),
     ...(role === "lawyer" ? [{ to: "/conflicts", label: t("nav.conflicts"), end: false }] : []),
     ...(role === "admin"
       ? [
           { to: "/admin/users", label: t("nav.users"), end: false },
+          { to: "/admin/billing", label: t("nav.billing"), end: false },
           { to: "/admin/break-glass", label: t("nav.breakGlass"), end: false },
         ]
       : []),
@@ -106,15 +108,17 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         {t("app.skipToContent")}
       </a>
 
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border bg-surface print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link to="/" className="flex min-w-0 items-center gap-3 rounded-md">
-            <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-ink"
-              aria-hidden="true"
-            >
-              <Scale className="size-5" strokeWidth={1.75} />
-            </span>
+            {/* The logo sits on its own white tile so it reads in light and dark themes. */}
+            <img
+              src="/logo-mark.png"
+              alt=""
+              width={40}
+              height={40}
+              className="size-10 shrink-0 rounded-lg border border-border"
+            />
             <span className="flex flex-col leading-tight">
               <span className="text-lg font-semibold tracking-tight">{t("app.name")}</span>
               {/* Hidden on phones so the header stays on one line in every language. */}
@@ -133,12 +137,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 outline-none sm:px-6 sm:py-12"
+        className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 outline-none sm:px-6 sm:py-12 print:max-w-none print:p-0"
       >
         {children ?? <Outlet />}
       </main>
 
-      <footer className="border-t border-border">
+      <footer className="border-t border-border print:hidden">
         <p className="mx-auto max-w-5xl px-4 py-4 text-xs text-muted sm:px-6">{t("app.footer")}</p>
       </footer>
     </div>

@@ -37,7 +37,15 @@ for (const url of [config.databaseUrl, ownerUrl]) {
 const owner = new pg.Client({ connectionString: ownerUrl });
 await owner.connect();
 await owner.query(
-  'TRUNCATE "notification", "matter_task", "hearing", "document_version", "document", "break_glass_grant", "party", "matter_member", "matter", "matter_counter", "client", "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
+  'TRUNCATE "payment", "invoice_line", "invoice", "invoice_counter", "fee_agreement", "notification", "matter_task", "hearing", "document_version", "document", "break_glass_grant", "party", "matter_member", "matter", "matter_counter", "client", "audit_event", "rate_limit_bucket", "password_token", "recovery_code", "totp_factor", "session", "app_user" RESTART IDENTITY CASCADE',
+);
+// Synthetic office details (not a real office), so invoices can be issued in tests.
+await owner.query(
+  `UPDATE billing_settings SET office_name = 'Cabinet de démonstration Lexora',
+     address = '1 rue de l''Exemple, Rabat', ice = '000000000000001', tax_id = '1',
+     professional_tax_id = NULL, bar_association = 'Rabat', bank_name = 'Banque de démonstration',
+     rib = '000000000000000000000001', vat_rate_basis_points = 2000, payment_term_days = 30,
+     phone = NULL, email = NULL, invoice_note = NULL`,
 );
 await owner.end();
 

@@ -36,6 +36,11 @@ export interface IntegrationContext {
 }
 
 const TABLES = [
+  "payment",
+  "invoice_line",
+  "invoice",
+  "invoice_counter",
+  "fee_agreement",
   "notification",
   "matter_task",
   "hearing",
@@ -99,10 +104,19 @@ export async function integrationContext(): Promise<IntegrationContext> {
   };
 }
 
-/** Empties every table (owner role: the app role may not truncate). */
+/**
+ * Empties every table (owner role: the app role may not truncate) and puts
+ * the single billing-settings row back to its defaults.
+ */
 export async function resetDatabase(ctx: IntegrationContext): Promise<void> {
   await ctx.owner.query(
     `TRUNCATE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`,
+  );
+  await ctx.owner.query(
+    `UPDATE billing_settings SET office_name = NULL, address = NULL, phone = NULL, email = NULL,
+       ice = NULL, tax_id = NULL, professional_tax_id = NULL, bar_association = NULL,
+       bank_name = NULL, rib = NULL, vat_rate_basis_points = 2000, payment_term_days = 30,
+       invoice_note = NULL`,
   );
 }
 

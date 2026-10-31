@@ -164,6 +164,28 @@ Phase 3 adds identity and sessions:
   then retries the action.
 - **CLI**: `npm run admin -w @lexora/api -- create | recover`.
 
+Phase 7 adds fees, invoices and payments:
+
+- **Data**: `billing_settings` (one row: the office details printed on
+  invoices, VAT rate and payment term), `fee_agreement`, `invoice` (invoices
+  and credit notes, with frozen office and client details and running
+  totals), `invoice_line`, `payment` and `invoice_counter` (one row per
+  series and year). Migrations `billing` (tables, constraints, privileges,
+  freeze triggers) and `billing_numbering_guard` (numbers must come from
+  the counter).
+- **API**: `/api/billing/settings` and `/api/billing/summary`
+  (administrators), `/api/invoices` (list, CSV export),
+  `/api/matters/:matterId/fee-agreements` and
+  `/api/matters/:matterId/invoices` (drafts, issue, credit note, payments,
+  void). Arithmetic in `modules/billing/money.ts`, CSV in
+  `modules/billing/csv.ts`.
+- **Web**: a "fees and billing" section on the matter page, an invoice page
+  (draft editor, issue, print, payments, credit notes), an invoice list with
+  the export, and an administrator billing page. The office logo is in the
+  header, the browser tab and on invoices.
+- **Session**: carries the office's current UTC offset, which the web app
+  uses for today's office date.
+
 Phase 6 adds hearings, deadlines, tasks and background work:
 
 - **Data**: `hearing`, `matter_task` (deadlines and tasks), `notification`
@@ -245,8 +267,7 @@ same rules. See [security.md](security.md#authorization).
 
 ## Data model
 
-Built so far (Phases 3 and 4); the rest is the outline refined in Phases 5
-to 7.
+Built so far (Phases 3 to 7).
 
 - `User`, `Session`, `TotpFactor`, `RecoveryCode`, `PasswordToken`,
   `RateLimitBucket` (Phase 3)
@@ -261,9 +282,12 @@ to 7.
 - `Document` (matter, title, hidden by whom and when), `DocumentVersion`
   (number, random storage key, cleaned file name, detected type, size,
   SHA-256, scanner version; never changed after it is written) (Phase 5)
-- `Document` (metadata, storage key, hash, detected type, scan status)
-- `Hearing`, `Deadline`, `Task`
-- `FeeAgreement`, `Invoice`, `InvoiceLine`, `Payment`, `InvoiceCounter`
+- `BillingSettings` (one row), `FeeAgreement` (fixed, hourly or other;
+  ended, never deleted), `Invoice` (invoice or credit note, draft or issued,
+  number, dates, VAT rate, totals, running totals, frozen office and client
+  details), `InvoiceLine` (fee or disbursement, quantity in hundredths, unit
+  price and net in centimes), `Payment` (payment or refund, voided with a
+  reason), `InvoiceCounter` (series and year) (Phase 7)
 - `AuditEvent` (append-only for the application)
 
 Records that hold legal or financial history are archived, not hard deleted.
