@@ -97,6 +97,38 @@ jobs:
         if: ${{ failure() }}
         run: docker compose -f compose.dev.yaml --profile scanner logs db clamav
 
+  images:
+    name: Production images (build and scan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Production Compose file is valid
+        run: >
+          LEXORA_HOSTNAME=lexora.ci.lan LEXORA_BIND_ADDRESS=127.0.0.1 LEXORA_SECRETS_DIR=/tmp
+          docker compose -f compose.prod.yaml config --quiet
+      - name: Build the images
+        run: |
+          docker build --target api -t lexora-api:ci .
+          docker build --target web -t lexora-web:ci .
+          docker build --target migrate -t lexora-migrate:ci .
+      - name: Scan the running images (Trivy)
+        # Every finding is listed; the job fails on high and critical ones
+        # that have a fix (an image rebuild or upgrade takes it).
+        run: |
+          mkdir -p "$RUNNER_TEMP/images"
+          for image in api web; do
+            docker save "lexora-$image:ci" -o "$RUNNER_TEMP/images/$image.tar"
+            docker run --rm -v "$RUNNER_TEMP/images:/images:ro" -v "$PWD/.trivyignore:/.trivyignore:ro" "$TRIVY_IMAGE" \
+              image --input "/images/$image.tar" --scanners vuln,secret --ignorefile /.trivyignore \
+              --no-progress --skip-version-check
+            docker run --rm -v "$RUNNER_TEMP/images:/images:ro" -v "$PWD/.trivyignore:/.trivyignore:ro" "$TRIVY_IMAGE" \
+              image --input "/images/$image.tar" --scanners vuln,secret --ignorefile /.trivyignore \
+              --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress --skip-version-check --quiet
+          done
+
   security-scans:
     name: Secret and vulnerability scans
     runs-on: ubuntu-24.04

@@ -417,6 +417,35 @@ Secret handling:
   (verified).
 - Document names are not logged.
 
+## Production deployment
+
+Built in Phase 9 (verified locally in Docker; host steps to be run on the
+server, see [operations/server-setup.md](operations/server-setup.md)):
+
+- **Containers** (`compose.prod.yaml`): `no-new-privileges`, all
+  capabilities dropped (database and scanner: only CHOWN, DAC_OVERRIDE,
+  FOWNER, SETGID, SETUID for their start-up), read-only root filesystems
+  (except the scanner), `/tmp` in memory, memory/CPU/process limits, health
+  checks, log rotation. Caddy (uid 10001) and the API (`node`) are not root;
+  Caddy's binary has its file capability removed and listens on high ports.
+- **Networks**: `data` and `proxy` are internal (no internet). Only the
+  scanner has outbound access, for signatures. Only Caddy publishes ports,
+  bound to the LAN address; the database is never published.
+- **TLS**: Caddy's internal CA (decision D5), HSTS one year, HTTP redirects
+  to HTTPS. The web app gets its CSP and security headers from Caddy; API
+  responses keep the API's own stricter headers. Access logs drop query
+  strings, cookies and CSRF tokens.
+- **Secrets**: files in a root-only folder, mounted as Docker secrets; the
+  API reads them through `*_FILE` settings. Only the one-off `migrate`
+  container holds the schema owner's password.
+- **Host** (`infra/server/harden.sh`): automatic security updates, SSH keys
+  only from the administrator's machine, `ufw` default-deny with 443/80 from
+  the office subnet, `DOCKER-USER` rules (Docker bypasses `ufw`), Docker
+  defaults (`no-new-privileges`, log rotation). Full-disk encryption and a
+  UPS are installation requirements.
+- **Backups**: see [operations/backups.md](operations/backups.md); a backup
+  counts only after a restore check, and failures raise alerts.
+
 ## Supply chain
 
 - **Exact versions** for every direct dependency (`save-exact`), with a
@@ -456,6 +485,23 @@ Secret handling:
   service from crafted glob patterns. Used only by the ESLint toolchain in
   development, on glob patterns from our own configuration; fixed only in
   minimatch 11.0.1 (2026-10-27), which ESLint does not use yet.
+- **Images** are official images pinned by digest (Node.js 24.22.1-alpine,
+  Caddy 2.11.6-alpine, PostgreSQL 18.6, ClamAV 1.5.4); their operating-system
+  packages are upgraded at build, and CI scans the built images with Trivy
+  (failing on fixable high and critical findings). Official images are
+  rebuilt upstream for security fixes, so the 14-day rule applies to npm
+  packages, not to these rebuilds.
+- **Inside the images**: npm and corepack are removed from the API and
+  migration images (they only need `node`; npm's bundled packages carried
+  18 advisories). Caddy 2.11.6 is rebuilt from source (`xcaddy` 0.4.7) with
+  Go 1.26.10 and fixed `golang.org/x/net` (0.60.0), go-jose v4 (4.1.6) and chi
+  (5.4.0), all older than 14 days except the Go toolchain: Go 1.26.10
+  (released 2026-10-27) is taken as an exception because it is the security
+  release fixing the standard-library advisories (four high) in the
+  upstream binary. Remaining in the web image, none fixable today: go-jose
+  v3 (one high, two moderate, no fixed version; used for ACME, which is off),
+  `x/crypto/openpgp` (unmaintained, unused) and two `x/net` HTML-parser
+  advisories fixed only in 0.62.0 (2026-10-27; Caddy parses no HTML here).
 - **One copy of each core package.** npm installs missing peer dependencies
   at their newest version; `overrides` in `package.json` pin `react`,
   `react-dom`, `vite` and `playwright-core` so only one copy exists.

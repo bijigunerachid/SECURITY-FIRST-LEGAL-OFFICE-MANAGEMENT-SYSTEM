@@ -1,0 +1,16 @@
+[Unit]
+Description=Lexora nightly backup, restore check and report
+Documentation=file:///opt/lexora/docs/operations/backups.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+# Settings for infra/server/backup.sh: LEXORA_DIR, RESTIC_REPOSITORY,
+# RESTIC_PASSWORD_FILE (see docs/operations/backups.md). Root-only file.
+EnvironmentFile=/etc/lexora/backup.env
+ExecStart=/opt/lexora/infra/server/backup.sh
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+NoNewPrivileges=true

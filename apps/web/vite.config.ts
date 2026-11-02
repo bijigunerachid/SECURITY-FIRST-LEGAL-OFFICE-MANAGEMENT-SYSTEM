@@ -31,6 +31,9 @@ const productionHeaders = {
   "Referrer-Policy": "no-referrer",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "Cross-Origin-Opener-Policy": "same-origin",
+  // Process isolation (Spectre): nothing from other origins is embedded.
+  "Cross-Origin-Embedder-Policy": "require-corp",
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
 
 const apiProxy = {

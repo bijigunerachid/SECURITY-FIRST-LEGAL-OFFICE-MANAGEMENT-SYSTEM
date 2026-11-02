@@ -1,0 +1,97 @@
+# Lexora reverse proxy (production). The only container that publishes ports.
+#
+# - HTTPS with certificates from Caddy's own internal certificate authority
+#   (decision D5: internal CA first). Office computers trust its root
+#   certificate once (docs/operations/server-setup.md).
+# - Port 80 only redirects to HTTPS.
+# - Serves the built web app and forwards /api/* to the API container.
+# - Security headers match apps/web/vite.config.ts (CONTENT_SECURITY_POLICY),
+#   which end-to-end tests already run under.
+{
+	admin off
+	# No ACME: certificates come from the internal CA only.
+	skip_install_trust
+	# Caddy runs as an unprivileged user, so it listens on high ports; the
+	# host publishes 80 and 443 to them (compose.prod.yaml).
+	http_port 8080
+	https_port 8443
+	servers {
+		# Clients' real addresses reach the API through X-Forwarded-For (TRUST_PROXY=1).
+		trusted_proxies static private_ranges
+	}
+}
+
+{$LEXORA_HOSTNAME} {
+	tls internal
+
+	encode zstd gzip
+
+	# Everywhere: HTTPS only from now on, and no server banner. The API sends
+	# its own, stricter security headers (helmet), which are kept as they are.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# Request bodies: 100 kB JSON and 25 MB uploads are limited by the API;
+	# this is an outer bound so nothing larger is ever buffered.
+	request_body {
+		max_size 110MB
+	}
+
+	handle /api/* {
+		reverse_proxy api:3000 {
+			# The API sees the original Host and the client's address.
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	handle {
+		# The web app's policy (same as vite.config.ts, which end-to-end tests run under).
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+			Cross-Origin-Opener-Policy "same-origin"
+			# Process isolation (Spectre): nothing from other origins is embedded.
+			Cross-Origin-Embedder-Policy "require-corp"
+			Cross-Origin-Resource-Policy "same-origin"
+		}
+		root * /srv
+		# Hashed assets can be cached; the HTML shell must always be fresh.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		# Query strings can hold names typed in searches, and cookies hold
+		# sessions: neither is logged.
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "\?.*$" ""
+				request>headers>Cookie delete
+				request>headers>X-Csrf-Token delete
+				resp_headers>Set-Cookie delete
+			}
+		}
+	}
+}
+
+http://{$LEXORA_HOSTNAME} {
+	# Port 80 outside, so the redirect names no port.
+	redir https://{host}{uri} permanent
+}
+
+# Container health check only: never published.
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	respond "ok" 200
+}
