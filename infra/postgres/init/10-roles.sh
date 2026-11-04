@@ -6,10 +6,12 @@
 #   lexora_app    used by the running API; may read and write table rows but
 #                 cannot create, alter or drop anything.
 #
-# And three databases, all owned by lexora_owner:
+# And the databases, all owned by lexora_owner. Development (the default):
 #   lexora_dev     development
 #   lexora_test    automated tests
 #   lexora_shadow  scratch database Prisma uses to check new migrations
+# Production (compose.prod.yaml) sets LEXORA_DATABASES=lexora and
+# LEXORA_APP_DATABASES=lexora: one database, no test or scratch copy.
 #
 # Passwords come from Docker secret files and are passed to psql as variables,
 # so they never appear in this script, the image or the process list.
@@ -41,7 +43,10 @@ ALTER ROLE lexora_app SET statement_timeout = '30s';
 ALTER ROLE lexora_app SET idle_in_transaction_session_timeout = '60s';
 SQL
 
-for database in lexora_dev lexora_test lexora_shadow; do
+databases="${LEXORA_DATABASES:-lexora_dev lexora_test lexora_shadow}"
+app_databases="${LEXORA_APP_DATABASES:-lexora_dev lexora_test}"
+
+for database in $databases; do
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres -v db="$database" <<'SQL'
 CREATE DATABASE :"db" OWNER lexora_owner;
 REVOKE ALL ON DATABASE :"db" FROM PUBLIC;
@@ -53,9 +58,9 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 SQL
 done
 
-# The application role may connect to the development and test databases
-# only, and gets row-level rights on tables the owner creates there.
-for database in lexora_dev lexora_test; do
+# The application role may connect to these databases only, and gets
+# row-level rights on tables the owner creates there.
+for database in $app_databases; do
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$database" -v db="$database" <<'SQL'
 GRANT CONNECT ON DATABASE :"db" TO lexora_app;
 GRANT USAGE ON SCHEMA public TO lexora_app;

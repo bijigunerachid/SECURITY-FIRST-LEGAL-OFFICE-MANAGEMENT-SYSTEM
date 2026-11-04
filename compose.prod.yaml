@@ -1,0 +1,222 @@
+# Lexora in production, on the office server (ADR 0006).
+#
+#   cp .env.prod.example .env.prod      (then edit it)
+#   sh infra/server/create-secrets.sh /etc/lexora/secrets
+#   docker compose --env-file .env.prod -f compose.prod.yaml build
+#   docker compose --env-file .env.prod -f compose.prod.yaml up -d db clamav
+#   docker compose --env-file .env.prod -f compose.prod.yaml --profile tools run --rm migrate
+#   docker compose --env-file .env.prod -f compose.prod.yaml up -d
+#
+# Hardening applied to every service: no new privileges, all Linux
+# capabilities dropped (the database and scanner get back only what their
+# start-up needs), read-only root filesystems with small in-memory /tmp,
+# memory, CPU and process limits, health checks, images pinned by digest.
+#
+# Networks: only Caddy publishes ports, on the server's LAN address. The
+# database, API and worker sit on internal networks with no route to the
+# internet; only the malware scanner may reach out, to update signatures.
+name: lexora
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: "3000"
+  LOG_LEVEL: info
+  # One reverse proxy (Caddy) in front: its X-Forwarded-For is trusted.
+  TRUST_PROXY: "1"
+  APP_ORIGIN: https://${LEXORA_HOSTNAME:?set LEXORA_HOSTNAME in .env.prod}
+  DATABASE_URL_FILE: /run/secrets/database_url
+  MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
+  DOCUMENT_STORAGE_DIR: /var/lib/lexora/documents
+  CLAMAV_HOST: clamav
+  CLAMAV_PORT: "3310"
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    # The image starts as root to prepare its folders, then switches to postgres.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:size=1m
+      - /tmp:size=64m
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      LEXORA_DATABASES: lexora
+      LEXORA_APP_DATABASES: lexora
+    secrets:
+      - postgres_superuser_password
+      - lexora_owner_password
+      - lexora_app_password
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [data]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$$(cat /run/secrets/postgres_superuser_password)"
+          psql -h 127.0.0.1 -U postgres -d lexora -tAc
+          "SELECT count(*) FROM pg_roles WHERE rolname IN ('lexora_owner', 'lexora_app')"
+          | grep -qx 2
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 200
+
+  clamav:
+    <<: *hardening
+    image: clamav/clamav:1.5.4@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      CLAMD_CONF_StreamMaxLength: 100M
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+    volumes:
+      - clamav_db:/var/lib/clamav
+    # Signature updates need the internet; nothing else here does.
+    networks: [data, updates]
+    mem_limit: 3g
+    cpus: 1
+    pids_limit: 100
+
+  api:
+    <<: *hardening
+    build:
+      context: .
+      target: api
+    image: lexora-api:local
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    environment: *api-environment
+    secrets: [database_url, mfa_encryption_key]
+    volumes:
+      - documents:/var/lib/lexora/documents
+    networks: [data, proxy]
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 768m
+    cpus: 2
+    pids_limit: 100
+
+  worker:
+    <<: *hardening
+    image: lexora-api:local
+    command: ["node", "dist/worker.js"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    environment: *api-environment
+    secrets: [database_url, mfa_encryption_key]
+    volumes:
+      - documents:/var/lib/lexora/documents
+    networks: [data]
+    # The worker serves no HTTP; its tasks report to the scheduled_task table.
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 50
+
+  web:
+    <<: *hardening
+    build:
+      context: .
+      target: web
+    image: lexora-web:local
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    environment:
+      LEXORA_HOSTNAME: ${LEXORA_HOSTNAME:?set LEXORA_HOSTNAME in .env.prod}
+    volumes:
+      # The internal certificate authority's keys live here: back them up.
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      # The server's LAN address only (never 0.0.0.0), see ADR 0006.
+      - "${LEXORA_BIND_ADDRESS:?set LEXORA_BIND_ADDRESS in .env.prod}:${LEXORA_HTTPS_PORT:-443}:8443"
+      - "${LEXORA_BIND_ADDRESS}:${LEXORA_HTTP_PORT:-80}:8080"
+    networks: [proxy, edge]
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 100
+
+  # One-off: `docker compose ... --profile tools run --rm migrate`. The only
+  # container given the schema owner's credentials.
+  migrate:
+    <<: *hardening
+    build:
+      context: .
+      target: migrate
+    image: lexora-migrate:local
+    profiles: [tools]
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    secrets: [migration_database_url]
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+
+secrets:
+  postgres_superuser_password:
+    file: ${LEXORA_SECRETS_DIR:?set LEXORA_SECRETS_DIR in .env.prod}/postgres_superuser_password
+  lexora_owner_password:
+    file: ${LEXORA_SECRETS_DIR}/lexora_owner_password
+  lexora_app_password:
+    file: ${LEXORA_SECRETS_DIR}/lexora_app_password
+  database_url:
+    file: ${LEXORA_SECRETS_DIR}/database_url
+  migration_database_url:
+    file: ${LEXORA_SECRETS_DIR}/migration_database_url
+  mfa_encryption_key:
+    file: ${LEXORA_SECRETS_DIR}/mfa_encryption_key
+
+networks:
+  # Database, scanner, API, worker: no route to the internet.
+  data:
+    internal: true
+  # Caddy to the API only: no route to the internet either.
+  proxy:
+    internal: true
+  # Caddy's published ports.
+  edge: {}
+  # The scanner's signature updates.
+  updates: {}
+
+volumes:
+  pgdata:
+  documents:
+  clamav_db:
+  caddy_data:
+  caddy_config:

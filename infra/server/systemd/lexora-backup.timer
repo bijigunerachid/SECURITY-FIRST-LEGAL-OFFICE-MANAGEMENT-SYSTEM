@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Lexora backup every night
+
+[Timer]
+# 02:30 office time; a missed run (server off) runs at the next start.
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

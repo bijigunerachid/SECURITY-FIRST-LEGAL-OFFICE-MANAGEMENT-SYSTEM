@@ -1,0 +1,24 @@
+# Only source code enters the build. Secrets, local settings, data and
+# build output never do (the image is built from a clean tree).
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+.git
+.github
+secrets
+storage
+backups
+docs
+CLAUDE.md
+CLAUDE.local.md
+HANDOFF.md
+apps/api/src/generated
+apps/web/e2e
+**/*.test.ts
+**/*.test.tsx

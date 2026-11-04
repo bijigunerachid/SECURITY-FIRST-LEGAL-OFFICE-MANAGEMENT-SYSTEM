@@ -4,14 +4,14 @@ Lexora is a security-first management system for a single law office in
 Morocco: clients, matters, documents, hearings, invoices and payments, in
 French and Arabic.
 
-> **Status: audit and alerts (Phase 8).** Accounts, sign-in with a second factor,
+> **Status: production readiness (Phase 9).** Accounts, sign-in with a second factor,
 > user administration, clients, matters, matter teams, parties,
 > conflict-of-interest search, audited break-glass access, matter documents
 > (upload with malware scanning, versions, download), hearings, deadlines,
 > tasks, an agenda, in-app reminders, fee agreements, invoices and credit
 > notes (gap-free numbers, printing), recorded payments and a CSV sales
 > journal, an audit-log viewer, security alerts and matter histories work;
-> production readiness comes next. Do not enter
+> production files, backups and runbooks are ready; the office server comes next. Do not enter
 > real client data into any version of Lexora until the
 > [production gate](docs/roadmap.md#production-gate) has been passed.
 
@@ -97,6 +97,14 @@ the matter tests then create their own clients and matters through the app.
 There is no demonstration data in the development database: sign in as the
 administrator you created, create a lawyer account, and open matters as
 that lawyer.
+
+## Production
+
+Installing Lexora on the office server, backups and what to do when
+something goes wrong: [docs/operations/server-setup.md](docs/operations/server-setup.md),
+[docs/operations/backups.md](docs/operations/backups.md),
+[docs/runbooks/](docs/runbooks/README.md). How to contribute:
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Checks
 

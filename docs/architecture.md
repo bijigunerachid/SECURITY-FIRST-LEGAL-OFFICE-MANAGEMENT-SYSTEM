@@ -75,6 +75,11 @@ support TypeScript 7 or ESLint 10, and React Router 8 requires Node.js 22.22+.
 
 ## Repository layout
 
+Production files (Phase 9): `Dockerfile` (targets `api`, `migrate`, `web`),
+`compose.prod.yaml`, `.env.prod.example`, `infra/caddy/Caddyfile`,
+`infra/server/` (secrets, hardening, backup, systemd units),
+`docs/operations/` and `docs/runbooks/`.
+
 Folders marked _(later)_ arrive with the phases that need them.
 
 ```
